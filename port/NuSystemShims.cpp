@@ -459,6 +459,44 @@ static void nuPiReadRom_OpenRomFile(void) {
     SPDLOG_ERROR("Place your Paper Mario (USA).z64 ROM in the build directory or project root.");
 }
 
+// Block cache for ROM reads. Callers hold sRomFileMutex.
+static const u32 kRomCacheBlock = 0x8000;
+static const u32 kRomCacheSlots = 32;
+static const u32 kRomCacheBypass = 0x10000;
+static u8 sRomCacheData[kRomCacheSlots][kRomCacheBlock];
+static s32 sRomCacheTag[kRomCacheSlots] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                                            -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+static u32 sRomCacheUsed[kRomCacheSlots];
+static u32 sRomCacheClock = 0;
+
+static const u8* rom_cache_block(u32 blockIdx) {
+    u32 victim = 0;
+
+    for (u32 i = 0; i < kRomCacheSlots; i++) {
+        if (sRomCacheTag[i] == (s32)blockIdx) {
+            sRomCacheUsed[i] = ++sRomCacheClock;
+            return sRomCacheData[i];
+        }
+        if (sRomCacheUsed[i] < sRomCacheUsed[victim]) {
+            victim = i;
+        }
+    }
+
+    const u32 start = blockIdx * kRomCacheBlock;
+    if (start >= sRomFileSize) {
+        return nullptr;
+    }
+    const u32 want = (sRomFileSize - start < kRomCacheBlock) ? (u32)(sRomFileSize - start) : kRomCacheBlock;
+    fseek(sRomFile, start, SEEK_SET);
+    size_t got = fread(sRomCacheData[victim], 1, want, sRomFile);
+    if (got < kRomCacheBlock) {
+        memset(sRomCacheData[victim] + got, 0, kRomCacheBlock - got);
+    }
+    sRomCacheTag[victim] = (s32)blockIdx;
+    sRomCacheUsed[victim] = ++sRomCacheClock;
+    return sRomCacheData[victim];
+}
+
 void nuPiReadRom(u32 rom_addr, void* buf_ptr, u32 size) {
     nuPiReadRom_OpenRomFile();
 
@@ -501,6 +539,33 @@ void nuPiReadRom(u32 rom_addr, void* buf_ptr, u32 size) {
             }
         }
         memset(buf_ptr, 0, size);
+        return;
+    }
+
+    // PORT: every call used to be its own fseek+fread on the memory card, ~0.3ms each. The game
+    // makes thousands of tiny reads: ~7000 per map load (2.3s), and the pause menu re-reads the
+    // same ~27 message headers every frame (50ms a frame). The ROM never changes, so serve small
+    // reads from a block cache. Big one-shot reads go straight to the file.
+    if (size <= kRomCacheBypass) {
+        u8* dst = (u8*)buf_ptr;
+        u32 addr = rom_addr;
+        u32 left = size;
+
+        while (left > 0) {
+            const u32 blockIdx = addr / kRomCacheBlock;
+            const u32 inBlock = addr % kRomCacheBlock;
+            const u32 n = (left < kRomCacheBlock - inBlock) ? left : kRomCacheBlock - inBlock;
+            const u8* block = rom_cache_block(blockIdx);
+
+            if (block == nullptr) {
+                memset(dst, 0, left);
+                return;
+            }
+            memcpy(dst, block + inBlock, n);
+            dst += n;
+            addr += n;
+            left -= n;
+        }
         return;
     }
 

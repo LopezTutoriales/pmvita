@@ -32,6 +32,10 @@ EvtScript N(EVS_DropLetter) = {
         Wait(1)
     EndLoop
     Return
+#ifdef PORT
+    // The label scan stops on End, not Return; without it the scan walks off the array.
+    End
+#endif
     //@bug not terminated!
 };
 
@@ -43,6 +47,10 @@ EvtScript N(EVS_DropLastLetter) = {
         Wait(1)
     EndLoop
     Return
+#ifdef PORT
+    // The label scan stops on End, not Return; without it the scan walks off the array.
+    End
+#endif
     //@bug not terminated!
 };
 

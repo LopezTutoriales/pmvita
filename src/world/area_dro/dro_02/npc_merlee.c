@@ -216,6 +216,12 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
     SpriteRasterInfo rasterInfo;
     s32 ret;
 
+#ifdef PORT
+    // ifxImg was left uninitialized here; a zero alpha on my stack made imgfx skip the shuffle and never finish
+    memset(&ifxImg, 0, sizeof(ifxImg));
+    ifxImg.alpha = 255;
+#endif
+
     if (card->unk_00 == 0) {
         return 1;
     }

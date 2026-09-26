@@ -1,4 +1,7 @@
 #include "common.h"
+#ifdef PORT
+#include <stdio.h>
+#endif
 #include "npc.h"
 #include "effects.h"
 
@@ -141,6 +144,10 @@ void spawn_drops(Enemy* enemy) {
         }
     }
 
+#ifdef PORT
+    s32 portHeartsRolled = dropCount;
+    f32 portHpFraction = fraction;
+#endif
     if (is_ability_active(ABILITY_HEART_FINDER)) {
         dropCount += 1 + rand_int(2);
     }
@@ -195,6 +202,10 @@ void spawn_drops(Enemy* enemy) {
         }
     }
 
+#ifdef PORT
+    s32 portFlowersRolled = dropCount;
+    f32 portFpFraction = fraction;
+#endif
     if (is_ability_active(ABILITY_FLOWER_FINDER)) {
         dropCount += 1 + rand_int(2);
     }
@@ -226,6 +237,21 @@ void spawn_drops(Enemy* enemy) {
         }
     }
 
+#ifdef PORT
+    // A tester saw no hearts or flowers drop for a whole chapter. Hearts only drop when HP is at or
+    // below the table's cutoff, so this says whether that is by design or the free shadow and
+    // render-task budget clamped them to nothing.
+    {
+        static s32 sLogged = 0;
+
+        if (sLogged < 30) {
+            sLogged++;
+            fprintf(stderr, "[drops] hp=%.2f cutoff=%.2f hearts=%d | fp=%.2f cutoff=%.2f flowers=%d | shadows=%d tasks=%d\n",
+                    portHpFraction, drops->heartDrops[0] / 32767.0f, portHeartsRolled, portFpFraction,
+                    drops->flowerDrops[0] / 32767.0f, portFlowersRolled, availableShadows, availableRenderTasks);
+        }
+    }
+#endif
     itemToDrop = ITEM_COIN;
     do {} while (0);
     minCoinBonus = drops->minCoinBonus;

@@ -393,7 +393,8 @@ std::string Context::GetShortName() {
 
 std::string Context::GetAppBundlePath() {
 #ifdef __vita__
-    return std::string("ux0:data/papership");
+    // the VPK carries papership.o2r in app0:, so a store install works without copying it by hand
+    return std::string("app0:");
 #endif
 #if defined(__ANDROID__)
     const char* externaldir = SDL_AndroidGetExternalStoragePath();

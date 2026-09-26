@@ -254,7 +254,60 @@ static void port_hud_cache_miss(const char* kind, s32 id, s32 flags) {
 }
 #endif
 
+#ifdef PORT
+static void hud_element_load_script_impl(HudElement* hudElement, HudScript* anim);
+static s32 sPortWorldCacheCapacity = 0;
+
+// hud_element_update finds an element's images in the cache named by the element's battle flag,
+// but this loader filled whichever cache the game context selected. A world element whose script
+// was set during pause went into the pause cache and was then looked up in the world cache, so it
+// drew whatever image it had before (the garbled icons), or aborted the game before that was
+// guarded. Load world elements into the world cache, where the draw looks for them. That cache
+// also outlives the pause, unlike the borrowed pause buffer.
 void hud_element_load_script(HudElement* hudElement, HudScript* anim) {
+    if (!(hudElement->flags & HUD_ELEMENT_FLAG_BATTLE) && gGameStatusPtr->context != CONTEXT_WORLD &&
+        gHudElementCacheBufferWorld != nullptr && sPortWorldCacheCapacity > 0) {
+        {
+            // which world element is being loaded outside the world, and from where
+            static s32 sLogged = 0;
+            if (sLogged < 8) {
+                sLogged++;
+                fprintf(stderr, "[hudroute] world elem %p flags=0x%X anim=%p ctx=%d list=%s caller=%p\n",
+                        (void*)hudElement, hudElement->flags, (void*)anim, gGameStatusPtr->context,
+                        gHudElements == &gHudElementsWorld ? "world" : "battle", __builtin_return_address(0));
+            }
+        }
+        HudCacheEntry* savedRaster = gHudElementCacheTableRaster;
+        HudCacheEntry* savedPalette = gHudElementCacheTablePalette;
+        u8* savedBuffer = gHudElementCacheBuffer;
+        s32* savedSize = gHudElementCacheSize;
+        s32 savedCapacity = gHudElementCacheCapacity;
+        s8 savedContext = gGameStatusPtr->context;
+
+        gHudElementCacheTableRaster = gHudElementCacheTableRasterWorld;
+        gHudElementCacheTablePalette = gHudElementCacheTablePaletteWorld;
+        gHudElementCacheBuffer = gHudElementCacheBufferWorld;
+        gHudElementCacheSize = &gHudElementCacheSizeWorld;
+        gHudElementCacheCapacity = sPortWorldCacheCapacity;
+        gGameStatusPtr->context = CONTEXT_WORLD;
+
+        hud_element_load_script_impl(hudElement, anim);
+
+        gHudElementCacheTableRaster = savedRaster;
+        gHudElementCacheTablePalette = savedPalette;
+        gHudElementCacheBuffer = savedBuffer;
+        gHudElementCacheSize = savedSize;
+        gHudElementCacheCapacity = savedCapacity;
+        gGameStatusPtr->context = savedContext;
+        return;
+    }
+    hud_element_load_script_impl(hudElement, anim);
+}
+
+static void hud_element_load_script_impl(HudElement* hudElement, HudScript* anim) {
+#else
+void hud_element_load_script(HudElement* hudElement, HudScript* anim) {
+#endif
     intptr_t* pos = (intptr_t*)anim;
     s32 raster;
     s32 palette;
@@ -840,6 +893,9 @@ void hud_element_clear_cache(void) {
         gHudElementCacheBuffer = general_heap_malloc(gHudElementCacheCapacity);
         ASSERT(gHudElementCacheBuffer);
         gHudElementCacheBufferWorld = gHudElementCacheBuffer;
+#ifdef PORT
+        sPortWorldCacheCapacity = gHudElementCacheCapacity;
+#endif
         *gHudElementCacheSize = 0;
         entryRaster = gHudElementCacheTableRaster;
         entryPalette = gHudElementCacheTablePalette;
@@ -954,6 +1010,18 @@ s32 hud_element_create(HudScript* anim) {
 
     (*gHudElements)[id] = hudElement = heap_malloc(sizeof(*hudElement));
     gHudElementsNumber++;
+#ifdef PORT
+    // an element created in one context but stored in the other list gets the wrong heap and id mask
+    if ((gGameStatusPtr->context == CONTEXT_WORLD) != (gHudElements == &gHudElementsWorld)) {
+        static s32 sLogged = 0;
+        if (sLogged < 12) {
+            sLogged++;
+            fprintf(stderr, "[hudmix] create id=%d ctx=%d list=%s anim=%p mem=%p caller=%p\n", id,
+                    gGameStatusPtr->context, gHudElements == &gHudElementsWorld ? "world" : "battle",
+                    (void*)anim, (void*)hudElement, __builtin_return_address(0));
+        }
+    }
+#endif
 
     ASSERT(hudElement != nullptr);
 
@@ -2310,6 +2378,9 @@ void ALT_clear_hud_element_cache(void) {
         gHudElementCacheBuffer = heap_malloc(gHudElementCacheCapacity);
         ASSERT(gHudElementCacheBuffer);
         gHudElementCacheBufferWorld = gHudElementCacheBuffer;
+#ifdef PORT
+        sPortWorldCacheCapacity = gHudElementCacheCapacity;
+#endif
         *gHudElementCacheSize = 0;
         gHudElementCacheSize = &gHudElementCacheSizeWorld;
         gHudElementCacheTableRaster = gHudElementCacheTableRasterWorld;

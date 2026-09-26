@@ -1348,10 +1348,21 @@ typedef struct AmbienceSavedVoice {
  */
 typedef union AmbVoiceStateInfo {
     struct {
+#if defined(PORT) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        // mseq_player.c builds and masks `all` as playerIndex<<24 | trackIndex<<16 | tune<<8,
+        // which is the N64's big-endian byte order. On a little-endian CPU the fields have to be
+        // declared in reverse for those shifts to land on them; otherwise trackIndex and tune
+        // swap, and restoring voices after a battle indexes tracks[] with a note number.
+        u8 released;
+        u8 tune;
+        u8 trackIndex;
+        u8 playerIndex;
+#else
         u8 playerIndex;     /// Index of the owning ambience player
         u8 trackIndex;      ///< Track index within the player (0–9)
         u8 tune;            ///< Note or drum ID used to differentiate voices on the same track
         u8 released;        ///< Set to true when the voice should be released/stopped
+#endif
     };
     s32 all;
 } AmbVoiceStateInfo;

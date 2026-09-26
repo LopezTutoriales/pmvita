@@ -565,11 +565,22 @@ void imgfx_update(u32 idx, ImgFXType type, s32 imgfxArg1, s32 imgfxArg2, s32 img
             state->ints.raw[1][0] = -1;
             return;
         case IMGFX_ALLOC_COLOR_BUF:
+#ifdef PORT
+            // func_8013A4D0 always frees this with general_heap_free, but heap_malloc/heap_free
+            // pick the battle heap in battle, so the pair ended up in different arenas. Use the
+            // general heap on every path.
+            if (state->colorBuf != nullptr) {
+                general_heap_free(state->colorBuf);
+            }
+            state->colorBufCount = imgfxArg1 * 4;
+            state->colorBuf = general_heap_malloc(state->colorBufCount);
+#else
             if (state->colorBuf != nullptr) {
                 heap_free(state->colorBuf);
             }
             state->colorBufCount = imgfxArg1 * 4;
             state->colorBuf = heap_malloc(state->colorBufCount);
+#endif
             return;
         case IMGFX_OVERLAY:
         case IMGFX_OVERLAY_XLU:

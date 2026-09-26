@@ -228,7 +228,8 @@ $(TARGET).vpk: $(TARGET).velf check-livearea
 		-a livearea/startup.png=sce_sys/livearea/contents/startup.png \
 		-a livearea/github.png=sce_sys/livearea/contents/github.png \
 		-a livearea/discord.png=sce_sys/livearea/contents/discord.png \
-		-a livearea/template.xml=sce_sys/livearea/contents/template.xml
+		-a livearea/template.xml=sce_sys/livearea/contents/template.xml \
+		-a papership.o2r=papership.o2r
 
 %.velf: %.elf
 	cp $< $<.unstripped.elf

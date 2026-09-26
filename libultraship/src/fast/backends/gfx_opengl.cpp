@@ -36,7 +36,16 @@
 #endif
 #endif
 
+extern "C" uint64_t port_time_us(void);
+
 namespace Fast {
+
+// PORT: phase times of the last shader created. A shader the vitaGL disk cache already holds should
+// compile in a few milliseconds; if the compile phases stay in the hundreds, the cache is missing.
+double gPortShaderMsVs = 0.0;
+double gPortShaderMsFs = 0.0;
+double gPortShaderMsLink = 0.0;
+
 int GfxRenderingAPIOGL::GetMaxTextureSize() {
     GLint max_texture_size;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
@@ -395,7 +404,9 @@ ShaderProgram* GfxRenderingAPIOGL::CreateAndLoadNewShader(uint64_t shader_id0, u
 
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex_shader, 1, &sources[0], &lengths[0]);
+    uint64_t portT0 = port_time_us();
     glCompileShader(vertex_shader);
+    gPortShaderMsVs = (port_time_us() - portT0) / 1000.0;
     glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
         GLint max_length = 0;
@@ -410,7 +421,9 @@ ShaderProgram* GfxRenderingAPIOGL::CreateAndLoadNewShader(uint64_t shader_id0, u
 
     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment_shader, 1, &sources[1], &lengths[1]);
+    portT0 = port_time_us();
     glCompileShader(fragment_shader);
+    gPortShaderMsFs = (port_time_us() - portT0) / 1000.0;
     glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
     if (!success) {
         GLint max_length = 0;
@@ -426,7 +439,9 @@ ShaderProgram* GfxRenderingAPIOGL::CreateAndLoadNewShader(uint64_t shader_id0, u
     GLuint shader_program = glCreateProgram();
     glAttachShader(shader_program, vertex_shader);
     glAttachShader(shader_program, fragment_shader);
+    portT0 = port_time_us();
     glLinkProgram(shader_program);
+    gPortShaderMsLink = (port_time_us() - portT0) / 1000.0;
     glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
     if (!success) {
         GLint max_length = 0;

@@ -47,6 +47,24 @@ void* heap_malloc(s32 size) {
 }
 
 s32 heap_free(void* data) {
+#ifdef PORT
+    // heap_malloc picks its arena from the game context when allocating, and this picked it again
+    // from the context when freeing. Anything allocated in one context and freed in another went
+    // to the wrong arena: the badge crash, status icon popups, image fx colour buffers and hud
+    // elements all did this. Free a block to the arena it actually lives in.
+    {
+        u8* p = (u8*)data;
+        u8* gen = (u8*)&heap_generalHead;
+        u8* btl = (u8*)&heap_battleHead;
+
+        if (p >= gen && p < gen + GENERAL_HEAP_SIZE) {
+            return general_heap_free(data);
+        }
+        if (p >= btl && p < btl + BATTLE_HEAP_SIZE) {
+            return _heap_free(&heap_battleHead, data);
+        }
+    }
+#endif
     if (gGameStatusPtr->context != CONTEXT_WORLD) {
         return _heap_free(&heap_battleHead, data);
     } else {

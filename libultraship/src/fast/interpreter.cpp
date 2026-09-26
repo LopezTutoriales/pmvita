@@ -80,6 +80,11 @@ uint64_t port_time_us(void);
 
 namespace Fast {
 
+// PORT: phase times of the last shader created, set by the GL backend.
+extern double gPortShaderMsVs;
+extern double gPortShaderMsFs;
+extern double gPortShaderMsLink;
+
 static UcodeHandlers ucode_handler_index = ucode_f3dex2;
 
 const static uint32_t f3dex2AttrHandler[] = {
@@ -180,7 +185,8 @@ ShaderProgram* Interpreter::LookupOrCreateShaderProgram(uint64_t id0, uint64_t i
         static int sShaderLogged = 0;
         if (ms > 20.0 && sShaderLogged < 30) {
             sShaderLogged++;
-            fprintf(stderr, "[shader] compiled in %.1fms id=0x%llX/0x%llX\n", ms, (unsigned long long)id0,
+            fprintf(stderr, "[shader] %.1fms (vertex compile %.1f, fragment compile %.1f, link %.1f) id=0x%llX/0x%llX\n",
+                    ms, gPortShaderMsVs, gPortShaderMsFs, gPortShaderMsLink, (unsigned long long)id0,
                     (unsigned long long)id1);
         }
     }
@@ -3184,7 +3190,10 @@ void Interpreter::GfxDpFillRectangle(int32_t ulx, int32_t uly, int32_t lrx, int3
     GfxDrawRectangle(ulx, uly, lrx, lry);
     mRdp->combine_mode = saved_combine_mode;
 
-    if (widened && mRdp->prim_color.a > gPortFadeAlpha) {
+    // Only a fade counts: a 1-cycle primitive fill in black. The camera background is a FILL-mode
+    // fill in its own colour, and the first build of this check spent its whole budget on those.
+    if (widened && mode == G_CYC_1CYCLE && mRdp->prim_color.r < 16 && mRdp->prim_color.g < 16 &&
+        mRdp->prim_color.b < 16 && mRdp->prim_color.a > gPortFadeAlpha) {
         gPortFadeAlpha = mRdp->prim_color.a;
     }
 }
@@ -5398,21 +5407,38 @@ void Interpreter::Run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_r
     // PORT: every check says the fade fill covers the whole window, yet the edges still show the
     // scene. Read the finished frame back: black here means the frame is right and presenting it
     // is not; colour here means something really drew over the fill.
+    // Each readback stalls the GPU, so sample every 4th fade frame and stop after 120 reads. Log when
+    // the edges and the centre disagree, plus a few agreeing samples to show real fades were read.
     if (gPortFadeAlpha >= 250 && !mFbActive) {
-        static int sFadeSamples = 0;
+        static int sFadeFrames = 0;
+        static int sFadeReads = 0;
+        static int sFadeAgreeLogged = 0;
+        static int sFadeDifferLogged = 0;
 
-        if (sFadeSamples < 12) {
+        if ((sFadeFrames++ % 4) == 0 && sFadeReads < 120) {
             uint8_t left[4] = { 0 }, mid[4] = { 0 }, right[4] = { 0 };
             int w = (int)mGfxCurrentWindowDimensions.width;
             int h = (int)mGfxCurrentWindowDimensions.height;
+            int diff = 0;
 
-            sFadeSamples++;
+            sFadeReads++;
             port_gl_read_pixel(12, h / 2, left);
             port_gl_read_pixel(w / 2, h / 2, mid);
             port_gl_read_pixel(w - 12, h / 2, right);
-            fprintf(stderr, "[fadepx] alpha=%d left=(%d,%d,%d) mid=(%d,%d,%d) right=(%d,%d,%d) win=%dx%d\n",
-                    gPortFadeAlpha, left[0], left[1], left[2], mid[0], mid[1], mid[2], right[0], right[1],
-                    right[2], w, h);
+            for (int c = 0; c < 3; c++) {
+                diff += abs(left[c] - mid[c]) + abs(right[c] - mid[c]);
+            }
+            bool differ = diff > 60;
+            if ((differ && sFadeDifferLogged < 12) || (!differ && sFadeAgreeLogged < 3)) {
+                if (differ) {
+                    sFadeDifferLogged++;
+                } else {
+                    sFadeAgreeLogged++;
+                }
+                fprintf(stderr, "[fadepx] %s alpha=%d left=(%d,%d,%d) mid=(%d,%d,%d) right=(%d,%d,%d) win=%dx%d\n",
+                        differ ? "EDGES DIFFER" : "match", gPortFadeAlpha, left[0], left[1], left[2], mid[0], mid[1],
+                        mid[2], right[0], right[1], right[2], w, h);
+            }
         }
     }
     gPortFadeAlpha = -1;
