@@ -168,7 +168,7 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
         ShapeFile* shapeFile = &gMapShapeData;
         void* yay0Asset = load_asset_by_name(wMapShapeName, &decompressedSize);
 
-        decode_yay0(yay0Asset, shapeFile);
+        decode_yay0_bounded(yay0Asset, shapeFile, sizeof(*shapeFile));
         general_heap_free(yay0Asset);
 
 #ifdef PORT

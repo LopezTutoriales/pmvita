@@ -37,7 +37,9 @@ API_CALLABLE(N(LoadPartyImage)) {
     u32 decompressedSize;
     void* compressed = load_asset_by_name(PARTY_IMAGE, &decompressedSize);
 
-    #ifdef SHIFT
+    #if defined(PORT)
+    decode_yay0_bounded(compressed, &img, sizeof(img));
+    #elif defined(SHIFT)
     decode_yay0(compressed, &img);
     #else
     decode_yay0(compressed, palette);

@@ -81,15 +81,11 @@ void load_map_bg(char* optAssetName) {
         if (compressedData == NULL) {
             fprintf(stderr, "[bg] ERROR: load_asset_by_name returned NULL for '%s'\n", assetName);
         } else {
-            extern u8 gBackgroundImageBuffer[];
+            extern u8 gBackgroundImageBuffer[0x20000];
             u8* buf = gBackgroundImageBuffer;
             u32 rasterN64, paletteN64;
 
-            if (assetSize > 0x10000) {
-                fprintf(stderr, "[bg] WARNING: decompressed bg size 0x%X exceeds buffer 0x10000!\n", assetSize);
-            }
-
-            decode_yay0(compressedData, buf);
+            decode_yay0_bounded(compressedData, buf, sizeof(gBackgroundImageBuffer));
             general_heap_free(compressedData);
 
             /* Parse N64-layout header (16 bytes big-endian) */

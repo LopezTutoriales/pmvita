@@ -106,6 +106,9 @@ void get_msg_properties(s32 msgID, s32* height, s32* width, s32* maxLineChars, s
 #endif
 void replace_window_update(s32 idx, s8 arg1, WindowUpdateFunc pendingFunc);
 void decode_yay0(void* src, void* dst);
+#ifdef PORT
+void decode_yay0_bounded(void* src, void* dst, u32 dstSize);
+#endif
 
 s32 ai_check_player_dist(struct Enemy* enemy, s32 arg1, f32 arg2, f32 arg3);
 

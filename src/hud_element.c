@@ -2322,6 +2322,16 @@ HudElement* get_hud_element(s32 id) {
 
 void hud_element_free(s32 id) {
 #ifdef PORT
+    // an id outside the list is garbage (overwritten memory), and freeing what it points at
+    // corrupts whichever heap block happens to be there
+    if ((u32)(id & ~HUD_ELEMENT_BATTLE_ID_MASK) >= ARRAY_COUNT(*gHudElements)) {
+        static s32 sLoggedRange = 0;
+        if (sLoggedRange < 12) {
+            sLoggedRange++;
+            fprintf(stderr, "[hudfree] id=0x%X out of range, caller=%p\n", id, __builtin_return_address(0));
+        }
+        return;
+    }
     // Freeing an already-empty slot is what crashes on unpause. Name the id and the caller
     // instead of faulting, so one log identifies which array is holding a stale id.
     if ((*gHudElements)[id & ~HUD_ELEMENT_BATTLE_ID_MASK] == nullptr) {

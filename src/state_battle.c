@@ -182,7 +182,7 @@ void state_step_end_battle(void) {
                 partner_init_after_battle(playerData->curPartner);
                 load_map_script_lib();
                 mapShape = load_asset_by_name(wMapShapeName, &sizeTemp);
-                decode_yay0(mapShape, &gMapShapeData);
+                decode_yay0_bounded(mapShape, &gMapShapeData, sizeof(gMapShapeData));
                 general_heap_free(mapShape);
 #ifdef PORT
                 {

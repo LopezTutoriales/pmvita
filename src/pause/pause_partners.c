@@ -14,9 +14,9 @@
 #ifdef PORT
 // On PORT, pal+img are combined: decode_yay0 writes pal+img sequentially into gPauseBufferPal.
 // Image data lives at gPauseBufferPal + 512. gPauseBufferImg arrays are unused stubs.
-extern s8 gPauseBufferPal1[512 + 15752];
+extern s8 gPauseBufferPal1[PAUSE_PORTRAIT_BLOB_SIZE];
 extern s8 gPauseBufferImg1[4];
-extern s8 gPauseBufferPal2[512 + 15752];
+extern s8 gPauseBufferPal2[PAUSE_PORTRAIT_BLOB_SIZE];
 extern s8 gPauseBufferImg2[4];
 #else
 extern s8 gPauseBufferPal1[512];
@@ -310,14 +310,22 @@ void pause_partners_load_portrait(s32 index) {
     if (gPausePartnersCurrentPortraitIndex != gPausePartnersPartnerIdx[index]) {
         gPausePartnersCurrentPortraitIndex = gPausePartnersPartnerIdx[index];
         asset = load_asset_by_name(gPausePartnersAssetNames[gPausePartnersCurrentPortraitIndex], &size);
+#ifdef PORT
+        decode_yay0_bounded(asset, gPausePartnersPaletteBuffers[0], PAUSE_PORTRAIT_BLOB_SIZE);
+#else
         decode_yay0(asset, gPausePartnersPaletteBuffers[0]);
+#endif
         general_heap_free(asset);
     }
 
     if (gPausePartnersNextPortraitIndex != gPausePartnersPartnerIdx[(index + 1) % gPausePartnersNumPartners]) {
         gPausePartnersNextPortraitIndex = gPausePartnersPartnerIdx[(index + 1) % gPausePartnersNumPartners];
         asset = load_asset_by_name(gPausePartnersAssetNames[gPausePartnersNextPortraitIndex], &size);
+#ifdef PORT
+        decode_yay0_bounded(asset, gPausePartnersPaletteBuffers[1], PAUSE_PORTRAIT_BLOB_SIZE);
+#else
         decode_yay0(asset, gPausePartnersPaletteBuffers[1]);
+#endif
         general_heap_free(asset);
     }
 }

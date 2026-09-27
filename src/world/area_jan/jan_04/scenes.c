@@ -18,7 +18,7 @@ API_CALLABLE(N(LoadPartyImage)) {
         IMG_BIN raster[0x3D90];
     } sPortPartyImage;
 
-    decode_yay0(compressed, &sPortPartyImage);
+    decode_yay0_bounded(compressed, &sPortPartyImage, sizeof(sPortPartyImage));
     general_heap_free(compressed);
 
     N(image).raster = sPortPartyImage.raster;

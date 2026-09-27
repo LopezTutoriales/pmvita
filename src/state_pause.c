@@ -249,7 +249,7 @@ void state_step_unpause(void) {
                     bgm_reset_max_volume();
                     load_map_script_lib();
                     mapShape = load_asset_by_name(wMapShapeName, &assetSize);
-                    decode_yay0(mapShape, &gMapShapeData);
+                    decode_yay0_bounded(mapShape, &gMapShapeData, sizeof(gMapShapeData));
                     general_heap_free(mapShape);
 #ifdef PORT
                     {

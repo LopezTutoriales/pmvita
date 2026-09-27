@@ -227,7 +227,7 @@ void btl_state_update_normal_start(void) {
             BattleEnemiesCreated = battle->formationSize;
             set_screen_overlay_params_back(OVERLAY_NONE, -1.0f);
             compressedAsset = load_asset_by_name(stage->shape, &size);
-            decode_yay0(compressedAsset, &gMapShapeData);
+            decode_yay0_bounded(compressedAsset, &gMapShapeData, sizeof(gMapShapeData));
             general_heap_free(compressedAsset);
 
             ASSERT(size <= 0x8000);

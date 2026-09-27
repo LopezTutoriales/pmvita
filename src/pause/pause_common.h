@@ -1,6 +1,9 @@
 #ifndef PAUSE_COMMON_H
 #define PAUSE_COMMON_H
 
+// partner portrait blob: 256-color palette + 150x105 CI8 raster + 10 bytes pad (0x3F90)
+#define PAUSE_PORTRAIT_BLOB_SIZE (512 + 150 * 105 + 10)
+
 #include "common.h"
 #include "hud_element.h"
 

@@ -31,12 +31,24 @@ void crash_screen_set_draw_info(u16* frameBufPtr, s16 width, s16 height) {
 /* The decompressed output is raw bytes (no endianness issue).          */
 /* ------------------------------------------------------------------ */
 
-void decode_yay0(void* src, void* dst) {
+// Every Yay0 header states its decompressed size. Decoding into a fixed buffer without checking
+// that size is how the partner portraits wrote 8 bytes over the pause item ids. This stops at the
+// end of the buffer and names the caller instead.
+void decode_yay0_bounded(void* src, void* dst, u32 dstSize) {
     u8* srcBytes = (u8*)src;
 
     /* Header: 4 big-endian u32 values */
     /* u32 magic = read_be_u32(srcBytes + 0); */ /* "Yay0" = 0x59617930 */
     u32 decompSize = read_be_u32(srcBytes + 4);
+    if (decompSize > dstSize) {
+        static s32 sLogged = 0;
+        if (sLogged < 16) {
+            sLogged++;
+            fprintf(stderr, "[yay0] OVERFLOW %u bytes into %u-byte buffer %p, clamped (caller=%p)\n",
+                    (unsigned)decompSize, (unsigned)dstSize, dst, __builtin_return_address(0));
+        }
+        decompSize = dstSize;
+    }
     u32 linkOffset = read_be_u32(srcBytes + 8);
     u32 chunkOffset = read_be_u32(srcBytes + 12);
 
@@ -78,7 +90,7 @@ void decode_yay0(void* src, void* dst) {
 
             u8* copyFrom = dstPos - dist;
             s32 i;
-            for (i = 0; i < count; i++) {
+            for (i = 0; i < count && dstPos < dstEnd; i++) {
                 *dstPos++ = *copyFrom++;
             }
         }
@@ -86,6 +98,10 @@ void decode_yay0(void* src, void* dst) {
         bits <<= 1;
         bitsLeft--;
     }
+}
+
+void decode_yay0(void* src, void* dst) {
+    decode_yay0_bounded(src, dst, 0xFFFFFFFF);
 }
 
 /* ------------------------------------------------------------------ */

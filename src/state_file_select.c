@@ -432,7 +432,7 @@ void state_step_exit_language_select(void) {
                     init_entity_data();
                     init_trigger_list();
                     mapShape = load_asset_by_name(wMapShapeName, &mapShapeSize);
-                    decode_yay0(mapShape, &gMapShapeData);
+                    decode_yay0_bounded(mapShape, &gMapShapeData, sizeof(gMapShapeData));
                     general_heap_free(mapShape);
 #ifdef PORT
                     {
