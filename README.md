@@ -77,10 +77,8 @@ Still to do:
 - Menus, text boxes, and the HUD stay at 4:3 by design; only the 3D world and full-frame backgrounds go widescreen.
 - Backgrounds that use the wavy-effect renderer (a handful of areas) aren't widened yet.
 - Noticeable stutter during some area transitions (e.g. mid-intro, when the cutscene changes areas). This looks like real load time reading assets off the memory card rather than a bug, but hasn't been optimized.
-- Battles, chapters, shops, partners, and minigames are untested.
-- The castle in the intro has wrong textures.
+- The castle in the intro has texture banding.
 - Pause cleanup can still free a stale HUD element id, logged as `[hudfree]`.
-- Gameplay and battles run around 21 to 26fps against a 30fps target.
 
 ## Building
 
