@@ -11,6 +11,8 @@
  */
 #include "ultra64.h"
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 extern void nuPiReadRom(u32 romAddr, void* dest, u32 size);
 
@@ -226,6 +228,40 @@ static void port_fill_monstar_bubbles(void) {
     }
 }
 
+// area_dgb vertex block, see dgb_vtx_blob.h
+#define PORT_DGB_VTX_ROM   0xC20F40
+#define PORT_DGB_VTX_COUNT 3526
+extern Vtx port_dgb_vtx_blob[];
+
+static void port_fill_dgb_vertices(void) {
+    u8* raw = malloc(PORT_DGB_VTX_COUNT * 16);
+    s32 i;
+
+    if (raw == NULL) {
+        fprintf(stderr, "[PORT] dgb vertices: out of memory\n");
+        return;
+    }
+    nuPiReadRom(PORT_DGB_VTX_ROM, raw, PORT_DGB_VTX_COUNT * 16);
+    for (i = 0; i < PORT_DGB_VTX_COUNT; i++) {
+        const u8* v = raw + i * 16;
+        Vtx_t* d = &port_dgb_vtx_blob[i].v;
+
+        d->ob[0] = (s16)port_be16(v + 0);
+        d->ob[1] = (s16)port_be16(v + 2);
+        d->ob[2] = (s16)port_be16(v + 4);
+        d->flag = port_be16(v + 6);
+        d->tc[0] = (s16)port_be16(v + 8);
+        d->tc[1] = (s16)port_be16(v + 10);
+        d->cn[0] = v[12];
+        d->cn[1] = v[13];
+        d->cn[2] = v[14];
+        d->cn[3] = v[15];
+    }
+    free(raw);
+    fprintf(stderr, "[PORT] dgb vertices loaded: %d from ROM 0x%X, first=(%.0f,%.0f,%.0f)\n", PORT_DGB_VTX_COUNT,
+            PORT_DGB_VTX_ROM, port_dgb_vtx_blob[0].v.ob[0], port_dgb_vtx_blob[0].v.ob[1], port_dgb_vtx_blob[0].v.ob[2]);
+}
+
 void port_fill_asset_stubs(void) {
     u32 i;
 
@@ -233,4 +269,5 @@ void port_fill_asset_stubs(void) {
         nuPiReadRom(sAssetFills[i].rom, sAssetFills[i].dest, sAssetFills[i].size);
     }
     port_fill_monstar_bubbles();
+    port_fill_dgb_vertices();
 }

@@ -8,7 +8,6 @@ API_CALLABLE(N(LoadSmashBridgesGraphics)) {
 }
 
 #ifdef PORT
-// Tubba vanishes instead of falling when the bridges break. Trace him through the scene.
 API_CALLABLE(N(PortLogTubba)) {
     Npc* npc = get_npc_safe(NPC_Tubba);
     if (npc == NULL) {

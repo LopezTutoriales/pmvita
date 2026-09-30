@@ -216,6 +216,21 @@ void func_E0080448(EffectInstance* effect) {
             gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
             if (i == 1 && type != 2) {
+#ifdef PORT
+                {
+                    extern u8 D_09001800_383600[];
+                    static s32 sLogged = 0;
+                    if (sLogged < 20) {
+                        sLogged++;
+                        fprintf(stderr, "[recover] type=%d num=%d big=%d scale=(%.2f,%.2f) alpha=%d angle=%.1f "
+                                        "offX=%.1f heartTex=%02X%02X%02X%02X gfx=%p\n",
+                                type, unk_40, unk_44, part->scaleX, part->scaleY, part->alpha, part->angle,
+                                part->offsetX, D_09001800_383600[0x200], D_09001800_383600[0x201],
+                                D_09001800_383600[0x202], D_09001800_383600[0x203],
+                                (void*)((EffectInstance*)effect)->shared->graphics);
+                    }
+                }
+#endif
                 gSPDisplayList(gMainGfxPos++, D_090033D0_3851D0);
                 gSPPopMatrix(gMainGfxPos++, G_MTX_MODELVIEW);
                 gSPDisplayList(gMainGfxPos++, D_090034D0_3852D0);

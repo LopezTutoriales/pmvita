@@ -322,7 +322,7 @@ void spr_appendGfx_component_flat(
 }
 
 #ifdef PORT
-// set while drawing the Chain Chomp sprite, so its components can be logged
+// Chain Chomp draw logging
 static s32 sPortLogSpriteDraw = 0;
 #endif
 
@@ -391,7 +391,6 @@ void spr_appendGfx_component(
     }
 #ifdef PORT
     if (sPortLogSpriteDraw) {
-        // one line per component: which path, size, where, and whether the raster holds anything
         static s32 sLogged = 0;
         static s32 sCalls = 0;
         if ((sCalls++ & 1) == 0 && sLogged < 90) {

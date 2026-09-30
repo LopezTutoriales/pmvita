@@ -31,9 +31,7 @@ void crash_screen_set_draw_info(u16* frameBufPtr, s16 width, s16 height) {
 /* The decompressed output is raw bytes (no endianness issue).          */
 /* ------------------------------------------------------------------ */
 
-// Every Yay0 header states its decompressed size. Decoding into a fixed buffer without checking
-// that size is how the partner portraits wrote 8 bytes over the pause item ids. This stops at the
-// end of the buffer and names the caller instead.
+// stops at the end of dst instead of overflowing it
 void decode_yay0_bounded(void* src, void* dst, u32 dstSize) {
     u8* srcBytes = (u8*)src;
 

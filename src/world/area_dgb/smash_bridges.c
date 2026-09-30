@@ -1,5 +1,10 @@
 #include "common.h"
 
+#ifdef PORT
+// the stubs were placeholders; the real block is built from the ROM
+#include "dgb_vtx_blob.h"
+#else
+
 #include "world/area_dgb/vtx/C20F40.vtx.inc.c"
 #include "world/area_dgb/vtx/C21100.vtx.inc.c"
 #include "world/area_dgb/vtx/C21130.vtx.inc.c"
@@ -290,3 +295,4 @@
 #include "world/area_dgb/vtx/C2E8C0.vtx.inc.c"
 #include "world/area_dgb/vtx/C2E980.vtx.inc.c"
 #include "world/area_dgb/vtx/C2EA60.vtx.inc.c"
+#endif

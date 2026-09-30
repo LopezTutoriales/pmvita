@@ -670,8 +670,7 @@ void pause_draw_menu_label(s32 index, s32 x, s32 y) {
 // starting at the palette buffer address, expecting the image buffer to follow immediately.
 // On PC, BSS layout is not guaranteed contiguous — use combined buffers.
 // The palette arrays hold pal+img contiguously; the image arrays are unused stubs.
-// Sized to the real blob (0x3F90). At 512 + 15752 every portrait decode ran 8 bytes past the
-// end, onto gPauseItemsHIDs, and unpausing then freed whatever ids the pixels made.
+// sized to the real portrait blob (0x3F90)
 BSS s8 gPauseBufferPal1[PAUSE_PORTRAIT_BLOB_SIZE];
 BSS s8 gPauseBufferImg1[4]; // unused on PORT — image lives at gPauseBufferPal1+512
 BSS s8 gPauseBufferPal2[PAUSE_PORTRAIT_BLOB_SIZE];

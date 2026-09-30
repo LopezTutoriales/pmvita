@@ -393,7 +393,7 @@ std::string Context::GetShortName() {
 
 std::string Context::GetAppBundlePath() {
 #ifdef __vita__
-    // the VPK carries papership.o2r in app0:, so a store install works without copying it by hand
+    // papership.o2r ships in the VPK
     return std::string("app0:");
 #endif
 #if defined(__ANDROID__)

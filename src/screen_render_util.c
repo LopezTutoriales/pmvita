@@ -140,6 +140,10 @@ void draw_prev_frame_buffer_at_screen_pos(s32 x1, s32 y1, s32 x2, s32 y2, f32 al
     }
 }
 
+#ifdef PORT
+#define PORT_DARKNESS_WIDE_MARGIN 240
+#endif
+
 void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32 progress) {
     Camera* camera = &gCameras[gCurrentCameraID];
     f32 texScale, f24;
@@ -162,10 +166,24 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     // PORT: Fast3D can't render to arbitrary CPU addresses (nuGfxZBuffer as offscreen target).
     // Skip the multi-pass offscreen stencil rendering. Instead, load the blurry circle texture
     // directly as the darkness stencil — same visual (spotlight hole in darkness) without animation.
+    // full circle from the quadrant, so plain clamp matches N64 mirror+clamp
     {
         extern u8 ui_stencil_blurry_circle_png[];
-        gDPLoadTextureTile(gMainGfxPos++, ui_stencil_blurry_circle_png, G_IM_FMT_I, G_IM_SIZ_8b, 64, 64, 0, 0, 63, 63,
-                           0, G_TX_MIRROR | G_TX_CLAMP, G_TX_MIRROR | G_TX_CLAMP, 6, 6, 15, 15);
+        static u8 sPortDarknessCircle[128 * 128];
+        static s32 sPortDarknessBuilt = FALSE;
+        if (!sPortDarknessBuilt) {
+            s32 x, y;
+            for (y = 0; y < 128; y++) {
+                s32 qy = y < 64 ? y : 127 - y;
+                for (x = 0; x < 128; x++) {
+                    s32 qx = x < 64 ? x : 127 - x;
+                    sPortDarknessCircle[y * 128 + x] = ui_stencil_blurry_circle_png[qy * 64 + qx];
+                }
+            }
+            sPortDarknessBuilt = TRUE;
+        }
+        gDPLoadTextureTile(gMainGfxPos++, sPortDarknessCircle, G_IM_FMT_I, G_IM_SIZ_8b, 128, 128, 0, 0, 127, 127,
+                           0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, 15, 15);
         gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, 0x01FC, 0x01FC);
         gDPPipeSync(gMainGfxPos++);
     }
@@ -270,10 +288,23 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
                             (s32)((32 - posY) * 32.0f / texScale + 1024.0f),
                             (s32)(1024.0f / texScale), (s32)(1024.0f / texScale));
     }
+#ifdef PORT
+    // darken the widescreen columns with the circle's dark corner texel
+    {
+        s32 vx1 = camera->viewportStartX;
+        s32 vx2 = camera->viewportStartX + camera->viewportW;
+        s32 vy1 = camera->viewportStartY;
+        s32 vy2 = camera->viewportStartY + camera->viewportH;
+
+        gSPWideTextureRectangle(gMainGfxPos++, -PORT_DARKNESS_WIDE_MARGIN * 4, vy1 * 4, vx1 * 4, vy2 * 4,
+                                G_TX_RENDERTILE, 0, 0, 0, 0);
+        gSPWideTextureRectangle(gMainGfxPos++, vx2 * 4, vy1 * 4, (SCREEN_WIDTH + PORT_DARKNESS_WIDE_MARGIN) * 4, vy2 * 4,
+                                G_TX_RENDERTILE, 0, 0, 0, 0);
+    }
+#endif
 }
 
 #ifdef PORT
-// Pixels drawn past each 4:3 edge, enough for any window wider than 4:3.
 #define PORT_STENCIL_WIDE_MARGIN 240
 #endif
 
@@ -289,9 +320,7 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
         t5 = x1;
         t6 = y1;
 #ifdef PORT
-        // The world is drawn wider than the camera's viewport, so a viewport-sized wipe leaves
-        // the extra columns at each edge showing the scene. The scissor covers the full width
-        // here; the rectangle itself is widened below.
+        // full-width scissor; the rect is widened below
         x1 = 0;
         x2 = SCREEN_WIDTH;
 #endif
@@ -321,9 +350,7 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
 #endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, primA);
 #ifdef PORT
-    // 0..SCREEN_WIDTH is only the 4:3 middle of a widescreen frame, so the wipe left the old scene
-    // showing in the side columns. Draw past both edges; the clamped stencil texture fills them
-    // with its edge colour, and the full-width scissor above already stretches to the window.
+    // draw past both 4:3 edges so the widescreen columns are covered
     {
         s32 wx1 = -PORT_STENCIL_WIDE_MARGIN;
         s32 wx2 = SCREEN_WIDTH + PORT_STENCIL_WIDE_MARGIN;

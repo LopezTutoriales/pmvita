@@ -2646,9 +2646,7 @@ void Interpreter::GfxDpSetTile(uint8_t fmt, uint32_t siz, uint32_t line, uint32_
 }
 
 void Interpreter::GfxDpSetTileSize(uint8_t tile, uint16_t uls, uint16_t ult, uint16_t lrs, uint16_t lrt) {
-    // Texture panners push both corners past the 12-bit field, so the far corner wraps below the
-    // near one. The RDP only uses the near corner as an offset and never notices; here the size is
-    // far minus near, which went negative and left a stale or garbage texture. Undo the wrap.
+    // panned tiles wrap the far corner below the near one in the 12-bit field
     if (lrs < uls) {
         lrs += 0x1000;
     }

@@ -217,7 +217,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
     s32 ret;
 
 #ifdef PORT
-    // ifxImg was left uninitialized here; a zero alpha on my stack made imgfx skip the shuffle and never finish
+    // was uninitialized; zero alpha stalled the shuffle
     memset(&ifxImg, 0, sizeof(ifxImg));
     ifxImg.alpha = 255;
 #endif

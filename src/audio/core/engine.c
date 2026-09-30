@@ -541,7 +541,6 @@ Instrument* au_get_instrument(AuGlobals* globals, BankSetIndex bank, s32 patch, 
     Instrument* instrument = (*bankSet)[patch];
 #ifdef PORT
     if (instrument == NULL) {
-        // caller tells me bgm/sfx/mseq; aux slot state tells me whether the bank was ever loaded
         fprintf(stderr, "[au_get_instrument] instrument is NULL (bankSetIdx=%d bank=0x%02X patch=%d) caller=%p aux0=%p aux1=%p aux2=%p aux3=%p\n",
                 bankSetIdx, bank, patch, __builtin_return_address(0),
                 (void*)globals->auxBankSet[0][0], (void*)globals->auxBankSet[1][0],

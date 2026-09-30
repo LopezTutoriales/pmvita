@@ -2532,9 +2532,7 @@ void create_encounters(void) {
                     npcSettings = enemy->npcSettings = npcData->settings;
                     enemy->drops = &npcData->drops;
 #ifdef PORT
-                    // Read as one s16 this only finds dropFlags in the high byte on big-endian. On
-                    // little-endian the high byte is itemDropChance, so every enemy fell back to the
-                    // default table, whose heart and flower attempts are all 0: nothing ever dropped.
+                    // the s16 read is big-endian only
                     if (npcData->drops.dropFlags != NPC_DROP_FLAG_80) {
 #else
                     if ((*(s16*)(&npcData->drops) & 0xFF00) != 0x8000) { //TODO s16?

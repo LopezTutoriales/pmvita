@@ -349,9 +349,7 @@ void player_handle_floor_collider_type(s32 colliderID) {
                 break;
             case SURFACE_TYPE_LAVA:
 #ifdef PORT
-                // The s32 read puts partnerActionState in the high byte only on big-endian. This is
-                // "not hiding with Bow", which on little-endian never matched, so lava and spikes
-                // hurt Mario while Bow was hiding him.
+                // not hiding with Bow; the s32 read is big-endian only
                 if (!(partnerStatus->partnerActionState == PARTNER_ACTION_USE && partnerStatus->actingPartner == PARTNER_BOW)) {
 #else
                 if ((*(s32*)(&partnerStatus->partnerActionState) & 0xFF0000FF) != 0x01000009) {
@@ -368,9 +366,7 @@ void player_handle_floor_collider_type(s32 colliderID) {
                 break;
             case SURFACE_TYPE_SPIKES:
 #ifdef PORT
-                // The s32 read puts partnerActionState in the high byte only on big-endian. This is
-                // "not hiding with Bow", which on little-endian never matched, so lava and spikes
-                // hurt Mario while Bow was hiding him.
+                // not hiding with Bow; the s32 read is big-endian only
                 if (!(partnerStatus->partnerActionState == PARTNER_ACTION_USE && partnerStatus->actingPartner == PARTNER_BOW)) {
 #else
                 if ((*(s32*)(&partnerStatus->partnerActionState) & 0xFF0000FF) != 0x01000009) {

@@ -48,9 +48,7 @@ double gPortShaderMsLink = 0.0;
 int gPortShaderFromCache = 0;
 
 #ifdef __vita__
-// Compiled-program cache on the memory card, same as the GoldenEye port: vitaGL compiles every
-// shader from source on every boot (about 340 ms each), so each one is saved as a program binary
-// the first time and loaded from disk after that.
+// program binary cache on the memory card (same as the GoldenEye port)
 #define PORT_SHADER_CACHE_DIR "ux0:data/papership/shadercache"
 
 static uint64_t port_shader_key(const std::string& vs, const std::string& fs) {
@@ -679,7 +677,12 @@ static uint32_t gfx_cm_to_opengl(uint32_t val) {
         case G_TX_MIRROR | G_TX_WRAP:
             return GL_MIRRORED_REPEAT;
         case G_TX_MIRROR | G_TX_CLAMP:
+#ifdef __vita__
+            // vitaGL rejects GL_MIRROR_CLAMP_TO_EDGE
+            return GL_MIRROR_CLAMP_EXT;
+#else
             return GL_MIRROR_CLAMP_TO_EDGE;
+#endif
         case G_TX_NOMIRROR | G_TX_WRAP:
             return GL_REPEAT;
     }

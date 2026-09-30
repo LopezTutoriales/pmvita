@@ -3,13 +3,29 @@
 s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32 bitDepth, s16 posX, s16 posY,
                              u16 clipX, u16 clipY, u16 clipWidth, u16 clipHeight);
 
+#ifdef PORT
+// scaled up, wrap pulled each piece's opposite edge in as lines
+#define PORT_IMG_TILE_WRAP G_TX_CLAMP
+#else
+#define PORT_IMG_TILE_WRAP G_TX_WRAP
+#endif
+
 s32 draw_ci_image_with_clipping(IMG_PTR raster, s32 width, s32 height, s32 fmt, s32 bitDepth, PAL_PTR palette, s16 posX,
                                 s16 posY, u16 clipULx, u16 clipULy, u16 clipLRx, u16 clipRLy, u8 opacity) {
     s32 ret = 1;
 
     gDPPipeSync(gMainGfxPos++);
     gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
+#ifdef PORT
+    // smooth the dithered partner art (the N64 VI filter did this); icons stay point sampled
+    if (bitDepth == G_IM_SIZ_8b && width >= 128) {
+        gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
+    } else {
+        gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+    }
+#else
     gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+#endif
     gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
 
     if (opacity == 255) {
@@ -139,15 +155,15 @@ s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32
             if (bitDepth == G_IM_SIZ_4b) {
                 gDPLoadTextureTile_4b(gMainGfxPos++, raster, fmt, width, height,
                                 texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0,
-                                G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
+                                PORT_IMG_TILE_WRAP, PORT_IMG_TILE_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
             } else if (bitDepth == G_IM_SIZ_16b) {
                 gDPLoadTextureTile(gMainGfxPos++, raster, fmt, G_IM_SIZ_16b, width, height,
                                 texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0,
-                                G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
+                                PORT_IMG_TILE_WRAP, PORT_IMG_TILE_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
             } else if (bitDepth == G_IM_SIZ_8b) {
                 gDPLoadTextureTile(gMainGfxPos++, raster, fmt, G_IM_SIZ_8b, width, height,
                                 texRect.ulx, texRect.uly, texRect.lrx, texRect.lry, 0,
-                                G_TX_WRAP, G_TX_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
+                                PORT_IMG_TILE_WRAP, PORT_IMG_TILE_WRAP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
             }
 
             gSPTextureRectangle(gMainGfxPos++, drawRect.ulx * 4, drawRect.uly * 4, drawRect.lrx * 4, drawRect.lry * 4,
