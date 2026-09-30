@@ -321,6 +321,11 @@ void spr_appendGfx_component_flat(
     gDPPipeSync(gMainGfxPos++);
 }
 
+#ifdef PORT
+// set while drawing the Chain Chomp sprite, so its components can be logged
+static s32 sPortLogSpriteDraw = 0;
+#endif
+
 void spr_appendGfx_component(
     SpriteRasterCacheEntry* cache,
     f32 dx, f32 dy, f32 dz,
@@ -384,6 +389,30 @@ void spr_appendGfx_component(
         quad = spr_get_quad_for_size(&quadIndex, width, height);
         cache->quadCacheIndex = quadIndex;
     }
+#ifdef PORT
+    if (sPortLogSpriteDraw) {
+        // one line per component: which path, size, where, and whether the raster holds anything
+        static s32 sLogged = 0;
+        static s32 sCalls = 0;
+        if ((sCalls++ & 1) == 0 && sLogged < 90) {
+            u8* img = (u8*)cache->image;
+            s32 bytes = (width * height) / 2;
+            s32 nonzero = 0, firstNz = -1, k;
+            for (k = 0; img != NULL && k < bytes; k++) {
+                if (img[k] != 0) {
+                    nonzero++;
+                    if (firstNz < 0) firstNz = k;
+                }
+            }
+            sLogged++;
+            fprintf(stderr, "[chomp] %s %dx%d img=%p nz=%d/%d firstNzRow=%d pos=(%.1f,%.1f,%.1f) scale=(%.2f,%.2f) "
+                            "op=%d imgfx=0x%X world=(%.1f,%.1f,%.1f)\n",
+                    quad != nullptr ? "quad" : "imgfx", width, height, (void*)img, nonzero, bytes,
+                    firstNz < 0 ? -1 : firstNz / (width / 2), dx, dy, dz, scaleX, scaleY, (u8)opacity,
+                    CurSpriteImgFX, mtxTransform[3][0], mtxTransform[3][1], mtxTransform[3][2]);
+        }
+    }
+#endif
 
     if (quad != nullptr) {
         spr_appendGfx_component_flat(quad, cache->image, palette, width, height, rotY, mtxTransform, (u8) opacity);
@@ -1275,12 +1304,18 @@ s32 spr_draw_npc_sprite(s32 spriteInstanceID, s32 yaw, s32 alphaIn, PAL_PTR* pal
         palettes = paletteList;
     }
 
+#ifdef PORT
+    sPortLogSpriteDraw = (SpriteInstances[i].spriteIndex == SPR_ChainChomp);
+#endif
     while (*components != PTR_LIST_END) {
         spr_draw_component(alpha, *components++, *animComponents, rasters, palettes, zscale, mtx);
         if (*animComponents != PTR_LIST_END) {
             animComponents++;
         }
     }
+#ifdef PORT
+    sPortLogSpriteDraw = 0;
+#endif
 
     return true;
 }

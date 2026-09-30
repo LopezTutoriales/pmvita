@@ -45,6 +45,79 @@ namespace Fast {
 double gPortShaderMsVs = 0.0;
 double gPortShaderMsFs = 0.0;
 double gPortShaderMsLink = 0.0;
+int gPortShaderFromCache = 0;
+
+#ifdef __vita__
+// Compiled-program cache on the memory card, same as the GoldenEye port: vitaGL compiles every
+// shader from source on every boot (about 340 ms each), so each one is saved as a program binary
+// the first time and loaded from disk after that.
+#define PORT_SHADER_CACHE_DIR "ux0:data/papership/shadercache"
+
+static uint64_t port_shader_key(const std::string& vs, const std::string& fs) {
+    uint64_t h = 1469598103934665603ULL;
+    for (unsigned char c : vs) h = (h ^ c) * 1099511628211ULL;
+    h = (h ^ 0xff) * 1099511628211ULL;
+    for (unsigned char c : fs) h = (h ^ c) * 1099511628211ULL;
+    return h;
+}
+
+static void port_shader_cache_path(char* out, size_t n, uint64_t key) {
+    snprintf(out, n, PORT_SHADER_CACHE_DIR "/%016llx.bin", (unsigned long long)key);
+}
+
+static GLuint port_shader_cache_load(uint64_t key) {
+    char path[128];
+    port_shader_cache_path(path, sizeof(path), key);
+    FILE* f = fopen(path, "rb");
+    if (!f) return 0;
+    fseek(f, 0, SEEK_END);
+    long len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    void* buf = len > 0 ? malloc(len) : NULL;
+    bool ok = buf && fread(buf, 1, len, f) == (size_t)len;
+    fclose(f);
+    GLuint prog = 0;
+    if (ok) {
+        prog = glCreateProgram();
+        glProgramBinary(prog, 0, buf, (GLsizei)len);
+        GLint linked = 0;
+        glGetProgramiv(prog, GL_LINK_STATUS, &linked);
+        if (!linked) {
+            fprintf(stderr, "[shader] cache entry %s failed to link, recompiling\n", path);
+            glDeleteProgram(prog);
+            prog = 0;
+        }
+    }
+    free(buf);
+    return prog;
+}
+
+static void port_shader_cache_save(uint64_t key, GLuint prog) {
+    static bool sDirMade = false;
+    if (!sDirMade) {
+        sceIoMkdir(PORT_SHADER_CACHE_DIR, 0777);
+        sDirMade = true;
+    }
+    GLint len = 0;
+    glGetProgramiv(prog, GL_PROGRAM_BINARY_LENGTH, &len);
+    if (len <= 0) return;
+    void* buf = malloc(len);
+    if (!buf) return;
+    GLsizei got = 0;
+    GLenum fmt = 0;
+    glGetProgramBinary(prog, len, &got, &fmt, buf);
+    char path[128];
+    port_shader_cache_path(path, sizeof(path), key);
+    FILE* f = fopen(path, "wb");
+    if (f) {
+        fwrite(buf, 1, got, f);
+        fclose(f);
+    } else {
+        fprintf(stderr, "[shader] could not write %s\n", path);
+    }
+    free(buf);
+}
+#endif
 
 int GfxRenderingAPIOGL::GetMaxTextureSize() {
     GLint max_texture_size;
@@ -401,7 +474,17 @@ ShaderProgram* GfxRenderingAPIOGL::CreateAndLoadNewShader(uint64_t shader_id0, u
     const GLchar* sources[2] = { vs_buf.data(), fs_buf.data() };
     const GLint lengths[2] = { (GLint)vs_buf.size(), (GLint)fs_buf.size() };
     GLint success;
+    GLuint shader_program = 0;
 
+    gPortShaderMsVs = gPortShaderMsFs = gPortShaderMsLink = 0.0;
+    gPortShaderFromCache = 0;
+#ifdef __vita__
+    const uint64_t cacheKey = port_shader_key(vs_buf, fs_buf);
+    shader_program = port_shader_cache_load(cacheKey);
+    gPortShaderFromCache = shader_program != 0;
+#endif
+
+    if (!shader_program) {
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex_shader, 1, &sources[0], &lengths[0]);
     uint64_t portT0 = port_time_us();
@@ -436,7 +519,7 @@ ShaderProgram* GfxRenderingAPIOGL::CreateAndLoadNewShader(uint64_t shader_id0, u
         abort();
     }
 
-    GLuint shader_program = glCreateProgram();
+    shader_program = glCreateProgram();
     glAttachShader(shader_program, vertex_shader);
     glAttachShader(shader_program, fragment_shader);
     portT0 = port_time_us();
@@ -451,6 +534,10 @@ ShaderProgram* GfxRenderingAPIOGL::CreateAndLoadNewShader(uint64_t shader_id0, u
         glGetProgramInfoLog(shader_program, max_length, &max_length, &error_log[0]);
         fprintf(stderr, "%s\n", &error_log[0]);
         abort();
+    }
+#ifdef __vita__
+    port_shader_cache_save(cacheKey, shader_program);
+#endif
     }
 
     size_t cnt = 0;

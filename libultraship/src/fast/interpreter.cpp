@@ -84,6 +84,7 @@ namespace Fast {
 extern double gPortShaderMsVs;
 extern double gPortShaderMsFs;
 extern double gPortShaderMsLink;
+extern int gPortShaderFromCache;
 
 static UcodeHandlers ucode_handler_index = ucode_f3dex2;
 
@@ -185,9 +186,9 @@ ShaderProgram* Interpreter::LookupOrCreateShaderProgram(uint64_t id0, uint64_t i
         static int sShaderLogged = 0;
         if (ms > 20.0 && sShaderLogged < 30) {
             sShaderLogged++;
-            fprintf(stderr, "[shader] %.1fms (vertex compile %.1f, fragment compile %.1f, link %.1f) id=0x%llX/0x%llX\n",
-                    ms, gPortShaderMsVs, gPortShaderMsFs, gPortShaderMsLink, (unsigned long long)id0,
-                    (unsigned long long)id1);
+            fprintf(stderr, "[shader] %.1fms %s (vertex compile %.1f, fragment compile %.1f, link %.1f) id=0x%llX/0x%llX\n",
+                    ms, gPortShaderFromCache ? "cache hit" : "compiled", gPortShaderMsVs, gPortShaderMsFs,
+                    gPortShaderMsLink, (unsigned long long)id0, (unsigned long long)id1);
         }
     }
     return prg;
@@ -2645,6 +2646,15 @@ void Interpreter::GfxDpSetTile(uint8_t fmt, uint32_t siz, uint32_t line, uint32_
 }
 
 void Interpreter::GfxDpSetTileSize(uint8_t tile, uint16_t uls, uint16_t ult, uint16_t lrs, uint16_t lrt) {
+    // Texture panners push both corners past the 12-bit field, so the far corner wraps below the
+    // near one. The RDP only uses the near corner as an offset and never notices; here the size is
+    // far minus near, which went negative and left a stale or garbage texture. Undo the wrap.
+    if (lrs < uls) {
+        lrs += 0x1000;
+    }
+    if (lrt < ult) {
+        lrt += 0x1000;
+    }
     mRdp->texture_tile[tile].uls = uls;
     mRdp->texture_tile[tile].ult = ult;
     mRdp->texture_tile[tile].lrs = lrs;

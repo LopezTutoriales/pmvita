@@ -162,7 +162,7 @@ void bulb_glow_appendGfx(void* effect) {
     // Can't read framebuffer on PC. Use the effect's I8 radial gradient texture with
     // additive blending to approximate the circular glow halo.
     {
-        extern u8 D_09000800_37B5D0[]; // 32x32 I8 radial gradient texture
+        extern u8 D_09000800_37B5D0[]; // 32x32 I8, one quarter of the glow (brightest at 31,31)
         BulbGlowFXData* data = ((EffectInstance*)effect)->data.bulbGlow;
         f32 centerX, centerY;
         s32 brightness = data->brightness;
@@ -222,16 +222,27 @@ void bulb_glow_appendGfx(void* effect) {
             IM_RD | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1));
         gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
         gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+        // The texture is one quadrant with the bright centre in its corner, so it has to be
+        // mirrored into a 64x64 circle. Drawn once and unmirrored, one corner of the quad was at
+        // full brightness, which showed as a glowing rectangle.
         gDPLoadTextureBlock(gMainGfxPos++, D_09000800_37B5D0, G_IM_FMT_I, G_IM_SIZ_8b, 32, 32, 0,
-            G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
+            G_TX_MIRROR | G_TX_WRAP, G_TX_MIRROR | G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
         gDPSetTexturePersp(gMainGfxPos++, G_TP_NONE);
         gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
         gDPSetPrimColor(gMainGfxPos++, 0, 0, r, g, b, brightness);
-        // Scale 32x32 texture to cover the full glow extent
-        gSPTextureRectangle(gMainGfxPos++,
-            xMin * 4, yMin * 4, xMax * 4, yMax * 4,
-            G_TX_RENDERTILE, 0, 0,
-            (s32)((32.0f / rectW) * 1024), (s32)((32.0f / rectH) * 1024));
+        // Map the full unclamped extent onto 64 mirrored texels so the centre lands on the
+        // effect's position even when the rect is cut by a screen edge.
+        {
+            s32 fullX = (s32)(centerX - glowExtent);
+            s32 fullY = (s32)(centerY - glowExtent);
+            f32 texPerPx = 64.0f / (glowExtent * 2);
+
+            gSPTextureRectangle(gMainGfxPos++,
+                xMin * 4, yMin * 4, xMax * 4, yMax * 4,
+                G_TX_RENDERTILE,
+                (s32)((xMin - fullX) * texPerPx * 32.0f), (s32)((yMin - fullY) * texPerPx * 32.0f),
+                (s32)(texPerPx * 1024), (s32)(texPerPx * 1024));
+        }
 
         // Restore render state
         gDPPipeSync(gMainGfxPos++);

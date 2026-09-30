@@ -7,6 +7,23 @@ API_CALLABLE(N(LoadSmashBridgesGraphics)) {
     return ApiStatus_DONE2;
 }
 
+#ifdef PORT
+// Tubba vanishes instead of falling when the bridges break. Trace him through the scene.
+API_CALLABLE(N(PortLogTubba)) {
+    Npc* npc = get_npc_safe(NPC_Tubba);
+    if (npc == NULL) {
+        fprintf(stderr, "[tubba] frame=%d npc missing\n", gGameStatusPtr->frameCounter);
+    } else {
+        fprintf(stderr, "[tubba] frame=%d pos=(%.1f,%.1f,%.1f) vel=%.2f flags=0x%08X floor=%d anim=0x%X "
+                        "alpha=%d hide=%d scale=(%.2f,%.2f) spr=%d\n",
+                gGameStatusPtr->frameCounter, npc->pos.x, npc->pos.y, npc->pos.z, npc->jumpVel, npc->flags,
+                npc->curFloor, npc->curAnim, npc->alpha, npc->hideAlpha, npc->scale.x, npc->scale.y,
+                npc->spriteInstanceID);
+    }
+    return ApiStatus_DONE2;
+}
+#endif
+
 EvtScript N(EVS_Scene_TubbaSmashBridges) = {
     Loop(0)
         Call(GetPlayerPos, LVar0, LVar1, LVar2)
@@ -49,6 +66,14 @@ EvtScript N(EVS_Scene_TubbaSmashBridges) = {
     Call(PanToTarget, CAM_DEFAULT, 0, true)
     Call(WaitForCam, CAM_DEFAULT, Float(1.0))
     Set(GB_ARN_Tubba_MapID, 1)
+#ifdef PORT
+    Thread
+        Loop(160)
+            Call(N(PortLogTubba))
+            Wait(3)
+        EndLoop
+    EndThread
+#endif
     Call(SetNpcVar, NPC_Tubba, 0, 1)
     Loop(0)
         Call(GetNpcVar, NPC_Tubba, 0, LVar0)

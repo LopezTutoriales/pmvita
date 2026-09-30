@@ -272,6 +272,11 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     }
 }
 
+#ifdef PORT
+// Pixels drawn past each 4:3 edge, enough for any window wider than 4:3.
+#define PORT_STENCIL_WIDE_MARGIN 240
+#endif
+
 void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 primR, s32 primG, s32 primB, s32 primA, s32 camID) {
     s32 x1, y1, x2, y2, t5, t6;
     f32 texScale;
@@ -285,8 +290,8 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
         t6 = y1;
 #ifdef PORT
         // The world is drawn wider than the camera's viewport, so a viewport-sized wipe leaves
-        // the extra columns at each edge showing the scene. Cover the full width, but keep the
-        // texture origin on the viewport so the stencil pattern stays put.
+        // the extra columns at each edge showing the scene. The scissor covers the full width
+        // here; the rectangle itself is widened below.
         x1 = 0;
         x2 = SCREEN_WIDTH;
 #endif
@@ -315,6 +320,20 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
     }
 #endif
     gDPSetPrimColor(gMainGfxPos++, 0, 0, primR, primG, primB, primA);
+#ifdef PORT
+    // 0..SCREEN_WIDTH is only the 4:3 middle of a widescreen frame, so the wipe left the old scene
+    // showing in the side columns. Draw past both edges; the clamped stencil texture fills them
+    // with its edge colour, and the full-width scissor above already stretches to the window.
+    {
+        s32 wx1 = -PORT_STENCIL_WIDE_MARGIN;
+        s32 wx2 = SCREEN_WIDTH + PORT_STENCIL_WIDE_MARGIN;
+
+        gSPWideTextureRectangle(gMainGfxPos++, wx1 * 4, y1 * 4, wx2 * 4, y2 * 4, G_TX_RENDERTILE,
+                                (s32)((wx1 - arg0) * 32.0f / texScale + 16.0f + 1024.0f),
+                                (s32)((t6 - arg1) * 32.0f / texScale + 16.0f + 1024.0f),
+                                (s32)(1024.0f / texScale), (s32)(1024.0f / texScale));
+    }
+#else
     // PORT: Cast S and T to s32 before passing to gSPTextureRectangle.
     // The _SHIFTL macro does (unsigned int)(v), which on ARM64 produces 0
     // for negative floats (fcvtzu saturates negatives to zero). Casting to
@@ -323,5 +342,6 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
                         (s32)((t5 - arg0) * 32.0f / texScale + 16.0f + 1024.0f),
                         (s32)((t6 - arg1) * 32.0f / texScale + 16.0f + 1024.0f),
                         (s32)(1024.0f / texScale), (s32)(1024.0f / texScale));
+#endif
     gDPPipeSync(gMainGfxPos++);
 }
