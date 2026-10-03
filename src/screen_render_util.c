@@ -166,25 +166,34 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     // PORT: Fast3D can't render to arbitrary CPU addresses (nuGfxZBuffer as offscreen target).
     // Skip the multi-pass offscreen stencil rendering. Instead, load the blurry circle texture
     // directly as the darkness stencil — same visual (spotlight hole in darkness) without animation.
-    // full circle from the quadrant, so plain clamp matches N64 mirror+clamp
+    // full circle from the quadrant at half res; 64x64 keeps it within the 4KB TMEM limit
     {
         extern u8 ui_stencil_blurry_circle_png[];
-        static u8 sPortDarknessCircle[128 * 128];
+        static u8 sPortDarknessCircle[64 * 64];
         static s32 sPortDarknessBuilt = FALSE;
         if (!sPortDarknessBuilt) {
             s32 x, y;
-            for (y = 0; y < 128; y++) {
-                s32 qy = y < 64 ? y : 127 - y;
-                for (x = 0; x < 128; x++) {
-                    s32 qx = x < 64 ? x : 127 - x;
-                    sPortDarknessCircle[y * 128 + x] = ui_stencil_blurry_circle_png[qy * 64 + qx];
+            for (y = 0; y < 64; y++) {
+                for (x = 0; x < 64; x++) {
+                    s32 sum = 0;
+                    s32 dx, dy;
+                    for (dy = 0; dy < 2; dy++) {
+                        s32 fy = y * 2 + dy;
+                        s32 qy = fy < 64 ? fy : 127 - fy;
+                        for (dx = 0; dx < 2; dx++) {
+                            s32 fx = x * 2 + dx;
+                            s32 qx = fx < 64 ? fx : 127 - fx;
+                            sum += ui_stencil_blurry_circle_png[qy * 64 + qx];
+                        }
+                    }
+                    sPortDarknessCircle[y * 64 + x] = sum / 4;
                 }
             }
             sPortDarknessBuilt = TRUE;
         }
-        gDPLoadTextureTile(gMainGfxPos++, sPortDarknessCircle, G_IM_FMT_I, G_IM_SIZ_8b, 128, 128, 0, 0, 127, 127,
+        gDPLoadTextureTile(gMainGfxPos++, sPortDarknessCircle, G_IM_FMT_I, G_IM_SIZ_8b, 64, 64, 0, 0, 63, 63,
                            0, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK, 15, 15);
-        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, 0x01FC, 0x01FC);
+        gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, 0, 0, 0x00FC, 0x00FC);
         gDPPipeSync(gMainGfxPos++);
     }
 #else
@@ -271,21 +280,28 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, alpha * 0.5f * progress / 255.0f);
     gDPSetEnvColor(gMainGfxPos++, 255, 255, 255, (255.0f - alpha * 0.5f) * progress / 255.0f);
 
+#ifdef PORT
+    // half-res circle, so texel coords and steps are halved
+    texScale *= 2.0f;
+#define PORT_DARKNESS_TEX_HALF 0.5f
+#else
+#define PORT_DARKNESS_TEX_HALF 1.0f
+#endif
     if (!isWorld) {
         gSPTextureRectangle(gMainGfxPos++,
                             camera->viewportStartX * 4, camera->viewportStartY * 4,
                             (camera->viewportStartX + camera->viewportW) * 4, (camera->viewportStartY + camera->viewportH) * 4,
                             G_TX_RENDERTILE,
-                            (s32)((12 - posX) * 32.0f / texScale + 16.0f + 1024.0f),
-                            (s32)((19 - posY) * 32.0f / texScale + 16.0f + 1024.0f),
+                            (s32)((12 - posX) * 32.0f / texScale + (16.0f + 1024.0f) * PORT_DARKNESS_TEX_HALF),
+                            (s32)((19 - posY) * 32.0f / texScale + (16.0f + 1024.0f) * PORT_DARKNESS_TEX_HALF),
                             (s32)(1024.0f / texScale), (s32)(1024.0f / texScale));
     } else {
         gSPTextureRectangle(gMainGfxPos++,
                             camera->viewportStartX * 4, camera->viewportStartY * 4,
                             (camera->viewportStartX + camera->viewportW) * 4, (camera->viewportStartY + camera->viewportH) * 4,
                             G_TX_RENDERTILE,
-                            (s32)((9 - posX) * 32.0f / texScale + 1024.0f),
-                            (s32)((32 - posY) * 32.0f / texScale + 1024.0f),
+                            (s32)((9 - posX) * 32.0f / texScale + 1024.0f * PORT_DARKNESS_TEX_HALF),
+                            (s32)((32 - posY) * 32.0f / texScale + 1024.0f * PORT_DARKNESS_TEX_HALF),
                             (s32)(1024.0f / texScale), (s32)(1024.0f / texScale));
     }
 #ifdef PORT

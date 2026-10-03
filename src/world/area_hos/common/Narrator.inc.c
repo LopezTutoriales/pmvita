@@ -55,6 +55,11 @@ void N(UpdateIntroMessages)(IntroMessage** introMessageLists) {
     if (N(CurMessageList) == nullptr) {
         N(CurMessageList) = introMessageLists[IntroMessageIdx];
     }
+#ifdef PORT
+    if (N(CurMessageList)->messageID == MSG_NONE) {
+        N(IntroMessageState) = INTRO_MSG_STATE_DONE;
+    }
+#endif
 
     switch (N(IntroMessageState)) {
         case INTRO_MSG_STATE_APPEAR:
@@ -160,6 +165,14 @@ void N(UpdateIntroMessages)(IntroMessage** introMessageLists) {
 
 API_CALLABLE(N(SetCurtainCallback)) {
     Bytecode* args = script->ptrReadPos;
+
+#ifdef PORT
+    // the N64 reloaded this map's data on every visit; a replayed intro started from the old end
+    N(IntroMessageState) = INTRO_MSG_STATE_APPEAR;
+    N(IntroMessageAlpha) = 0;
+    N(CurMessageList) = nullptr;
+    sPortListBackup = nullptr;
+#endif
 
     set_curtain_draw_callback((void (*)) evt_get_variable(script, *args++));
     return ApiStatus_DONE2;

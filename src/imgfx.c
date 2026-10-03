@@ -1,4 +1,7 @@
 #include "common.h"
+#ifdef PORT
+extern PAL_PTR gPortShadingSrcPal;
+#endif
 #include "ld_addrs.h"
 #include "sprite.h"
 #include "imgfx.h"
@@ -1579,6 +1582,9 @@ void imgfx_appendGfx_mesh_basic(ImgFXState* state, Matrix4f mtx) {
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
         gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
+#ifdef PORT
+        gPortShadingSrcPal = ImgFXCurrentTexturePtr->tex.palette;
+#endif
     }
 
     i = state->firstVtxIdx;
@@ -1757,6 +1763,9 @@ void imgfx_appendGfx_mesh_grid(ImgFXState* state, Matrix4f mtx) {
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
         gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
+#ifdef PORT
+        gPortShadingSrcPal = ImgFXCurrentTexturePtr->tex.palette;
+#endif
     }
 
     firstVtxIdx = state->firstVtxIdx;
@@ -1837,6 +1846,9 @@ void imgfx_appendGfx_mesh_anim(ImgFXState* state, Matrix4f mtx) {
     if (!(state->flags & IMGFX_FLAG_SKIP_TEX_SETUP)) {
         gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
         gDPLoadTLUT_pal16(gMainGfxPos++, 0, ImgFXCurrentTexturePtr->tex.palette);
+#ifdef PORT
+        gPortShadingSrcPal = ImgFXCurrentTexturePtr->tex.palette;
+#endif
         if ((gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED)
             && (state->flags & (IMGFX_FLAG_100000 | IMGFX_FLAG_80000))
             && (state->renderType == IMGFX_RENDER_DEFAULT

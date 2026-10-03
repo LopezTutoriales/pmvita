@@ -235,6 +235,12 @@ void spr_appendGfx_component_flat(
     s32 alpha
 ) {
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, palette);
+#ifdef PORT
+    {
+        extern PAL_PTR gPortShadingSrcPal;
+        gPortShadingSrcPal = palette;
+    }
+#endif
     if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) {
         gDPScrollMultiTile2_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height,
                               0, 0, width - 1, height - 1, 0,

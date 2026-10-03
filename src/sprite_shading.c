@@ -13,6 +13,9 @@ BSS SpriteShadingProfile bSpriteShadingProfile;
 BSS SpriteShadingProfile wSpriteShadingProfileAux;
 BSS SpriteShadingProfile bSpriteShadingProfileAux;
 BSS PAL_BIN SpriteShadingPalette[16];
+#ifdef PORT
+PAL_PTR gPortShadingSrcPal;
+#endif
 
 void appendGfx_shading_palette(Matrix4f mtx, s32 uls, s32 ult, s32 lrs, s32 lrt, s32 alpha,
                              f32 shadowX, f32 shadowY, f32 shadowZ,
@@ -413,15 +416,15 @@ void appendGfx_shading_palette(
         }
     }
 
-    // PORT: Fast3D can't render to arbitrary CPU memory (SpriteShadingPalette).
-    // Compute the 16-entry RGBA16 shading palette directly in software.
-    // Original code renders a gradient from highlight to shadow using the RDP.
+    // PORT: build the palette on the CPU; PM_CC_55 picks shadow or highlight per entry from the
+    // alpha bit of the sprite's own palette (tile 2 reads the TLUT as RGBA16)
     {
         s32 j;
         for (j = 0; j < 16; j++) {
-            s32 r = highlightR + (shadowR - highlightR) * j / 15;
-            s32 g = highlightG + (shadowG - highlightG) * j / 15;
-            s32 b = highlightB + (shadowB - highlightB) * j / 15;
+            s32 shaded = gPortShadingSrcPal != nullptr && (((u8*)gPortShadingSrcPal)[j * 2 + 1] & 1);
+            s32 r = shaded ? shadowR : highlightR;
+            s32 g = shaded ? shadowG : highlightG;
+            s32 b = shaded ? shadowB : highlightB;
             if (r < 0) r = 0; if (r > 255) r = 255;
             if (g < 0) g = 0; if (g > 255) g = 255;
             if (b < 0) b = 0; if (b > 255) b = 255;

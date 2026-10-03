@@ -61,6 +61,14 @@ API_CALLABLE(N(GetReturnMoveTime)) {
     return ApiStatus_DONE2;
 }
 
+#ifdef PORT
+// the N64 reloaded this overlay's data each use
+API_CALLABLE(N(ResetMultibonkChance)) {
+    N(MultibonkChance) = 200;
+    return ApiStatus_DONE2;
+}
+#endif
+
 API_CALLABLE(N(AdjustMultibonkChance)) {
     Actor* targetActor = get_actor(get_actor(script->owner1.actorID)->targetActorID);
 
@@ -1258,6 +1266,9 @@ s32 N(actionCommandTable)[] = { 7, 6, 5, 4, 3, 2, 1, 0 };
 s32 N(MultibonkChance) = 200;
 
 EvtScript N(EVS_Move_Multibonk) = {
+#ifdef PORT
+    Call(N(ResetMultibonkChance))
+#endif
     Call(LoadActionCommand, ACTION_COMMAND_JUMP)
     Call(action_command_jump_init)
     ExecWait(N(runToTarget))

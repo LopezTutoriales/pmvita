@@ -60,6 +60,9 @@ static int sVtxCacheCount;
 static DLCacheEntry sDLCache[MAX_DL_CACHE];
 static int sDLCacheCount;
 
+// mesh nodes: G_VTX points at a raw BE Vec3s position table, not at Vtx
+static s32 sMeshPositions;
+
 // Find cached vtx entry with the largest count for this offset
 static int find_cached_vtx_index(u32 offset) {
     int bestIdx = -1;
@@ -117,6 +120,18 @@ static Vtx* convert_entity_vtx(u8* gfxBuf, u32 gfxSize, u32 offset, s32 count) {
     return pc;
 }
 
+// total vertices loaded by a DL (mesh vtxList must cover all of them)
+static s32 count_dl_vtx(u8* gfxBuf, u32 gfxSize, u32 offset) {
+    s32 total = 0;
+    for (u32 p = offset; p + N64_GFX_CMD_SIZE <= gfxSize; p += N64_GFX_CMD_SIZE) {
+        u32 w0 = read_be_u32(gfxBuf + p);
+        u8 op = (w0 >> 24) & 0xFF;
+        if (op == ENT_G_ENDDL) break;
+        if (op == ENT_G_VTX) total += (w0 >> 12) & 0xFF;
+    }
+    return total;
+}
+
 // ================================================================
 // Display list conversion: N64 8-byte → PC 16-byte Gfx
 // ================================================================
@@ -170,6 +185,11 @@ static Gfx* convert_entity_dl(u8* gfxBuf, u32 gfxSize, u32 dlOffset) {
             case ENT_G_VTX: {
                 s32 numVerts = (w0 >> 12) & 0xFF;
                 u32 vtxOffset = w1 & 0x00FFFFFF;
+                if (sMeshPositions) {
+                    pc[i].words.w0 = (uintptr_t)w0;
+                    pc[i].words.w1 = (vtxOffset < gfxSize) ? (uintptr_t)(gfxBuf + vtxOffset) : 0;
+                    break;
+                }
                 Vtx* vtx = convert_entity_vtx(gfxBuf, gfxSize, vtxOffset, numVerts);
                 if (!vtx) {
                     fprintf(stderr, "[entity_anim_dl] G_VTX FAILED: vtxOffset=0x%X numVerts=%d gfxSize=0x%X w0=0x%08X w1=0x%08X\n",
@@ -412,10 +432,17 @@ s32 entity_convert_anim_data_port(
     for (s32 i = 0; i < nodeCount; i++) {
         // displayList → converted PC display list (offset from combined gfx+anim base)
         u32 dlVal = (u32)(uintptr_t)pcNodes[i].displayList;
+        s32 meshVtxCount = 0;
         if (dlVal != 0 && dlVal != 0xFFFFFFFF) {
             u32 dlOff = dlVal & 0xFFFF;
+            u32 vtxRaw = (u32)(uintptr_t)pcNodes[i].vtxList;
+            sMeshPositions = pcNodes[0].vertexStartOffset != 0 && vtxRaw != 0 && vtxRaw != 0xFFFFFFFF;
+            if (sMeshPositions && dlOff < gfxSize) {
+                meshVtxCount = count_dl_vtx(gfxBuf, gfxSize, dlOff);
+            }
             pcNodes[i].displayList = (dlOff < gfxSize) ?
                 (void*)convert_entity_dl(gfxBuf, gfxSize, dlOff) : NULL;
+            sMeshPositions = FALSE;
         } else {
             pcNodes[i].displayList = NULL;
         }
@@ -445,6 +472,10 @@ s32 entity_convert_anim_data_port(
         u32 vtxVal = (u32)(uintptr_t)pcNodes[i].vtxList;
         if (vtxVal != 0 && vtxVal != 0xFFFFFFFF) {
             u32 vtxOff = vtxVal & 0xFFFFF;
+            if (meshVtxCount > 0) {
+                pcNodes[i].vtxList = convert_entity_vtx(gfxBuf, gfxSize, vtxOff, meshVtxCount);
+                continue;
+            }
             int cachedIdx = find_cached_vtx_index(vtxOff);
             pcNodes[i].vtxList = (cachedIdx >= 0) ? sVtxCache[cachedIdx].vtx : NULL;
             if (pcNodes[i].vtxList == NULL && vtxOff < gfxSize) {

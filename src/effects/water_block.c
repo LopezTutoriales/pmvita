@@ -232,9 +232,10 @@ void water_block_appendGfx(void* effect) {
 
     gSPMatrix(gMainGfxPos++, &gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[81]);
+    // PORT: size the inline vertex space from sizeof(Vtx), 24 bytes under GBI_FLOATS
+    gSPBranchList(gMainGfxPos, &gMainGfxPos[1 + ARRAY_COUNT(D_E00B4CF0) * sizeof(Vtx) / sizeof(Gfx)]);
     vtxBase = (Vtx*)++gMainGfxPos;
-    gMainGfxPos = &gMainGfxPos[80];
+    gMainGfxPos = &gMainGfxPos[ARRAY_COUNT(D_E00B4CF0) * sizeof(Vtx) / sizeof(Gfx)];
 
     timePhase = gGameStatusPtr->frameCounter * 4;
 

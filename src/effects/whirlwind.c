@@ -181,11 +181,12 @@ void whirlwind_appendGfx(void* effect) {
     gSPDisplayList(gMainGfxPos++, D_09000400_3D3D30);
 
     // Reserve 0x208 bytes (65 commands) for a vertex buffer (2x16 Vtx + space for the current command)
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[65]);
+    // PORT: size the inline vertex space from sizeof(Vtx), 24 bytes under GBI_FLOATS
+    gSPBranchList(gMainGfxPos, &gMainGfxPos[1 + 32 * sizeof(Vtx) / sizeof(Gfx)]);
     vertexBuffer = (Vtx*)(gMainGfxPos + 1);
 
     // set the current position we're writing gfx commands to past the vertex buffer
-    gMainGfxPos = &gMainGfxPos[65];
+    gMainGfxPos = &gMainGfxPos[1 + 32 * sizeof(Vtx) / sizeof(Gfx)];
 
     // fill the vertex buffer; 2 sets of 16 verticies
     for (i = 0; i <= (360 / 24); i++) {

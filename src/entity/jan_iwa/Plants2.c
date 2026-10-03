@@ -101,6 +101,9 @@ void func_802BC050_E2E980(Entity* entity) {
         func_800EF300();
         resetMunchlesia = get_entity_by_index(entity->dataBuf.munchlesia->unk_00);
         exec_entity_commandlist(entity);
+#ifdef PORT
+        if (resetMunchlesia != nullptr)
+#endif
         exec_entity_commandlist(resetMunchlesia);
     }
 }
@@ -127,7 +130,12 @@ void func_802BC17C_E2EAAC(Entity* entity) {
 }
 
 s32 entity_Munchlesia_create_child(Entity* entity, EntityBlueprint* EntityBlueprint) {
+#ifdef PORT
+    // the variadic args need their end marker
+    return create_entity(EntityBlueprint, (s32)entity->pos.x, (s32)entity->pos.y, (s32)entity->pos.z, (s32)entity->rot.y, MAKE_ENTITY_END);
+#else
     return create_entity(EntityBlueprint, (s32)entity->pos.x, (s32)entity->pos.y, (s32)entity->pos.z, (s32)entity->rot.y);
+#endif
 }
 
 void func_802BC220_E2EB50(Entity* entity) {

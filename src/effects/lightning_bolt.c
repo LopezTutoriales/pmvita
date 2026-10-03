@@ -252,8 +252,9 @@ void lightning_bolt_appendGfx(void* effect) {
 
     vtxBuffer = (Vtx_t*) (gMainGfxPos + 1);
     vtx = (Vtx_t*) (gMainGfxPos + 1);
-    gSPBranchList(gMainGfxPos, gMainGfxPos + 0x31);
-    gMainGfxPos += 0x31;
+    // PORT: size the inline vertex space from sizeof(Vtx), 24 bytes under GBI_FLOATS
+    gSPBranchList(gMainGfxPos, gMainGfxPos + 1 + 2 * ARRAY_COUNT(data->boltVertexPosX) * sizeof(Vtx) / sizeof(Gfx));
+    gMainGfxPos += 1 + 2 * ARRAY_COUNT(data->boltVertexPosX) * sizeof(Vtx) / sizeof(Gfx);
 
     for (i = 0; i < ARRAY_COUNT(data->boltVertexPosX); i++) {
         if (i == 0) {

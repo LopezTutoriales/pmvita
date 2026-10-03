@@ -1,5 +1,8 @@
 #include "common.h"
 #include "effects_internal.h"
+#ifdef PORT
+#include <stdio.h>
+#endif
 
 u8 D_E00B2BA0[] = { 255, 255, 255, 255, 255, 255, 255, 255, 255, 200, 128, 32, 0, 0, 0, 0 };
 
@@ -251,6 +254,17 @@ void squirt_appendGfx(void* effect) {
     }
 
     gSPVertex(gMainGfxPos++, savedGfxPos, i * 2, 0);
+#ifdef PORT
+    {
+        Vtx_t* v0 = (Vtx_t*)savedGfxPos;
+        fprintf(stderr, "[squirt] t=%d life=%d travel=%d scale=%.2f head=(%.0f,%.0f) p5=(%.0f,%.0f) tail=(%.0f,%.0f) "
+                        "w0=%.0f w5=%.0f w11=%.0f a=%d/%d/%d\n",
+                data->unk_30, data->unk_2C, data->unk_28, data->unk_50, data->unk_E8[0], data->unk_118[0],
+                data->unk_E8[5], data->unk_118[5], data->unk_E8[11], data->unk_118[11],
+                (v0[0].ob[1] - v0[1].ob[1]) / 20.0f, (v0[10].ob[1] - v0[11].ob[1]) / 20.0f,
+                (v0[22].ob[1] - v0[23].ob[1]) / 20.0f, v0[0].cn[3], v0[10].cn[3], v0[22].cn[3]);
+    }
+#endif
 
     savedIdx = i;
     gSPDisplayList(gMainGfxPos++, unk_00 == 0 ? D_09000800_3B5B40 : D_090008A8_3B5BE8);

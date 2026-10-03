@@ -211,9 +211,10 @@ void N(appendGfx_piranha_vines)(void* data) {
         // for each point in numPoints
 
         vtxBuffer = (Vtx_t*)(gMainGfxPos + 1);
-        gSPBranchList(gMainGfxPos, &gMainGfxPos[1 + 2 * (2 * numPoints)]);
+        // PORT: size the inline vertex space from sizeof(Vtx), 24 bytes under GBI_FLOATS
+        gSPBranchList(gMainGfxPos, &gMainGfxPos[1 + (2 * numPoints) * sizeof(Vtx) / sizeof(Gfx)]);
         vtx = (Vtx_t*) (++gMainGfxPos);
-        gMainGfxPos = &gMainGfxPos[2 * (2 * numPoints)];
+        gMainGfxPos = &gMainGfxPos[(2 * numPoints) * sizeof(Vtx) / sizeof(Gfx)];
 
         for (j = 0; j < numPoints; j++) {
             posX = vine->points[j].x;

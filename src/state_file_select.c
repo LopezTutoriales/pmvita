@@ -571,6 +571,10 @@ void state_step_exit_file_select(void) {
             if (D_800A0930 > 0) {
                 D_800A0930--;
             } else {
+#ifdef PORT
+                // last frame before the map load freezes the screen; open the curtains fully
+                set_curtain_scale(2.0f);
+#endif
                 D_800A0931 = 6;
             }
             break;

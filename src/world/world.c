@@ -157,6 +157,12 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
 #endif
     }
 
+#ifdef PORT
+    {
+        extern void port_reset_map_overlay_data(const char* mapName);
+        port_reset_map_overlay_data(mapConfig->id);
+    }
+#endif
     gMapSettings = *mapConfig->settings;
 
     mapSettings = &gMapSettings;
@@ -248,7 +254,11 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
 
     gPlayerStatus.targetYaw = gPlayerStatus.curYaw;
 
+#ifdef PORT
+    sfx_set_reverb_mode(WorldReverbModeMapping[mapConfig->sfxReverb & 0x3]);
+#else
     sfx_set_reverb_mode(WorldReverbModeMapping[*(s32*)mapConfig->unk_1C & 0x3]);
+#endif
     sfx_reset_door_sounds();
 
     if (!skipLoadingAssets) {
@@ -280,6 +290,12 @@ void load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     initialize_status_bar();
     gGameStatusPtr->unk_90 = 1000;
     gGameStatusPtr->unk_92 = 1000;
+#ifdef PORT
+    {
+        extern void port_parade_backdrop_setup(const char* mapName);
+        port_parade_backdrop_setup(mapConfig->id);
+    }
+#endif
     gGameStatusPtr->mainScriptID = start_script_in_group(mapSettings->main, EVT_PRIORITY_0, 0, EVT_GROUP_NEVER_PAUSE)->id;
 }
 

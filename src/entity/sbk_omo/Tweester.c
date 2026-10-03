@@ -24,9 +24,6 @@ extern Vtx D_0A000860_E576C0[];
 #include "../port/endian.h"
 #define N64_VTX_SIZE 16
 
-// Pre-converted face texture: CI4 expanded to IA8 (64x32 = 2048 bytes)
-// Each byte: high 4 bits = intensity, low 4 bits = alpha
-static u8 sTweesterFaceIA8[64 * 32];
 #endif
 extern Mtx Entity_Tweester_mtxInnerWhirl;
 extern Mtx Entity_Tweester_mtxOuterWhirl;
@@ -74,23 +71,6 @@ void entity_Tweester_render_face(s32 entityIndex) {
     Entity* entity = get_entity_by_index(entityIndex);
     TweesterData* data = entity->dataBuf.tweester;
 
-#ifdef PORT
-    // PORT: Draw face quad inline with IA8 texture and XLU blend (no TEX_EDGE)
-    {
-        gDPPipeSync(gMainGfxPos++);
-        gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
-        gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-        gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
-        gDPLoadTextureBlock(gMainGfxPos++, sTweesterFaceIA8, G_IM_FMT_IA, G_IM_SIZ_8b, 64, 32, 0,
-            G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 6, 5, G_TX_NOLOD, G_TX_NOLOD);
-        gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
-        gDPSetRenderMode(gMainGfxPos++, G_RM_AA_ZB_XLU_SURF, G_RM_AA_ZB_XLU_SURF2);
-        gSPClearGeometryMode(gMainGfxPos++, G_LIGHTING | G_CULL_BACK);
-        gSPSetGeometryMode(gMainGfxPos++, G_SHADING_SMOOTH);
-        gSPVertex(gMainGfxPos++, D_0A000820_E57680, 4, 0);
-        gSP2Triangles(gMainGfxPos++, 0, 1, 2, 0, 0, 2, 3, 0);
-    }
-#else
     gDPPipeSync(gMainGfxPos++);
     gDPSetTextureLUT(gMainGfxPos++, G_TT_RGBA16);
     gDPLoadTLUT_pal16(gMainGfxPos++, 0, D_0A0018A0_E58700);
@@ -102,7 +82,6 @@ void entity_Tweester_render_face(s32 entityIndex) {
     gDPSetTexturePersp(gMainGfxPos++, G_TP_PERSP);
     gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP);
     gDPSetTileSize(gMainGfxPos++, G_TX_RENDERTILE, data->faceAnimTexOffset * 4, 0, (data->faceAnimTexOffset + 124) * 4, 31 * 4);
-#endif
 }
 
 void entity_Tweester_setupGfx(s32 entityIndex) {
@@ -112,14 +91,7 @@ void entity_Tweester_setupGfx(s32 entityIndex) {
     gDPPipeSync(gMainGfxPos++);
     gDPSetTextureLUT(gMainGfxPos++, G_TT_NONE);
     gSPTexture(gMainGfxPos++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
-#ifdef PORT
-    // PORT: PM_CC_ALT_INTERFERENCE uses 2-cycle TEXEL0*TEXEL1 which doesn't
-    // render correctly on PC (TEXEL1 from tile 1 not sampled properly).
-    // Use single-texture modulate as visible workaround.
-    gDPSetCombineMode(gMainGfxPos++, G_CC_MODULATEIA, G_CC_MODULATEIA);
-#else
     gDPSetCombineMode(gMainGfxPos++, PM_CC_ALT_INTERFERENCE, G_CC_MODULATEIA2);
-#endif
     gDPSetTextureDetail(gMainGfxPos++, G_TD_CLAMP);
     gDPSetTextureLOD(gMainGfxPos++, G_TL_TILE);
     gDPSetTextureImage(gMainGfxPos++, G_IM_FMT_I, G_IM_SIZ_8b, 32, D_0A000BF0_E57A50);
@@ -383,44 +355,7 @@ void entity_Tweester_init(Entity* entity) {
         memcpy(D_0A0014A0_E58300, buf + 0x14A0, 1024); // CI4 face texture
         memcpy(D_0A0018A0_E58700, buf + 0x18A0, 32);   // Face palette
 
-        // Disable Entity_Tweester_Render entirely — face is now drawn inline
-        // from setupGfx, and body uses broken PM_CC_ALT_INTERFERENCE.
-        {
-            extern Gfx Entity_Tweester_Render[];
-            Entity_Tweester_Render[0] = (Gfx)gsSPEndDisplayList();
-        }
 
-        // Pre-convert CI4 face texture to IA8 for PORT rendering.
-        // The interpreter's CI4 import has issues with ROM-loaded textures,
-        // so we expand the 4-bit palette indices into IA8 (intensity + alpha).
-        {
-            u8* ci4Data = buf + 0x14A0;    // CI4 texture (64x32, 1024 bytes)
-            u8* palData = buf + 0x18A0;    // RGBA16 palette (16 colors, 32 bytes)
-
-            // Convert RGBA16 palette to intensity+alpha lookup
-            u8 palIA[16];
-            for (int i = 0; i < 16; i++) {
-                u16 c = (palData[i * 2] << 8) | palData[i * 2 + 1];
-                u8 r = (c >> 11) & 0x1F;
-                u8 g = (c >> 6) & 0x1F;
-                u8 b = (c >> 1) & 0x1F;
-                u8 a = c & 1;
-                // Compute luminance (5-bit components → 4-bit intensity)
-                u8 lum = (r * 2 + g * 4 + b) / 7; // weighted avg, result 0-31
-                u8 intensity = (lum >> 1) & 0xF;   // 4-bit intensity
-                u8 alpha = a ? 0xF : 0x0;           // 4-bit alpha
-                palIA[i] = (intensity << 4) | alpha; // IA8: I4 + A4
-            }
-
-            // Expand CI4 → IA8: each CI4 byte has 2 pixels
-            for (int i = 0; i < 64 * 32 / 2; i++) {
-                u8 byte = ci4Data[i];
-                u8 hi = (byte >> 4) & 0xF;
-                u8 lo = byte & 0xF;
-                sTweesterFaceIA8[i * 2 + 0] = palIA[hi];
-                sTweesterFaceIA8[i * 2 + 1] = palIA[lo];
-            }
-        }
     }
 #endif
 }
