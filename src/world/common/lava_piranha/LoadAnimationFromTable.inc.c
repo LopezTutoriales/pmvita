@@ -3,7 +3,9 @@ API_CALLABLE(N(LoadAnimationFromTable)) {
     s32 type = evt_get_variable(script, *args++);
     s32 index = evt_get_variable(script, *args++);
 
-#ifndef PORT
+#ifdef PORT
+    port_lava_piranha_set_script(type, index);
+#else
     switch (type) {
         case VINE_0:
             dma_copy(

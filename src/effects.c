@@ -373,6 +373,15 @@ void remove_all_effects(void) {
             gEffectInstances[i] = nullptr;
         }
     }
+#ifdef PORT
+    // these would dangle into the freed battle effects
+    {
+        extern EffectInstance* gDamageCountEffects[24];
+        for (i = 0; i < 24; i++) {
+            gDamageCountEffects[i] = nullptr;
+        }
+    }
+#endif
 }
 
 s32 load_effect(s32 effectIndex) {

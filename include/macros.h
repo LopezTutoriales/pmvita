@@ -439,17 +439,9 @@ typedef s32 Difficulty2D[AC_DIFFICULTY_LEN][2];
 #define PM_CC2_29        TEXEL0, COMBINED, TEXEL0_ALPHA, TEXEL0, 1, TEXEL0, TEXEL1, TEXEL0
 
 // same as G_CC_INTERFERENCE, except the roles of TEXEL0 and TEXEL1 are swapped
-#ifdef PORT
-// PORT: TEXEL1 (tile 1) not sampled correctly by Fast3D interpreter.
-// Fall back to TEXEL0-only modulate. Loses dual-texture blending but renders correctly.
-#define	PM_CC_ALT_INTERFERENCE  \
-    TEXEL0, 0, SHADE, 0, \
-    TEXEL0, 0, SHADE, 0
-#else
 #define	PM_CC_ALT_INTERFERENCE  \
     TEXEL1, 0, TEXEL0, 0, \
     TEXEL1, 0, TEXEL0, 0
-#endif
 
 #define PM_CC_2B    PRIMITIVE, 0, TEXEL1, 0, 0, 0, 0, TEXEL1
 #define PM_CC_2C    PRIMITIVE, 0, TEXEL1, 0, TEXEL1, 0, PRIMITIVE, 0

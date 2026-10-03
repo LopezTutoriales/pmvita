@@ -1,5 +1,8 @@
 #include "model.h"
 #include "animation_script.h"
+#ifdef PORT
+#include "lava_piranha_vines.h"
+#endif
 #include "model.h"
 
 typedef struct DisplayListBufferHandle {
@@ -88,9 +91,19 @@ Vtx* animator_copy_vertices_to_buffer(ModelAnimator* animator, AnimatorNode* nod
 
     for (i = 0; i < vtxCount; i++) {
         *bufferMem = *nodeVtxList;
+#ifdef PORT
+        // positions stay big-endian in the entity's raw gfx buffer
+        {
+            u8* b = (u8*)buffer;
+            bufferMem->v.ob[0] = (s16)((b[0] << 8) | b[1]);
+            bufferMem->v.ob[1] = (s16)((b[2] << 8) | b[3]);
+            bufferMem->v.ob[2] = (s16)((b[4] << 8) | b[5]);
+        }
+#else
         bufferMem->v.ob[0] = buffer->x;
         bufferMem->v.ob[1] = buffer->y;
         bufferMem->v.ob[2] = buffer->z;
+#endif
         bufferMem++;
         buffer++;
         nodeVtxList++;
@@ -1111,6 +1124,9 @@ void play_model_animation(s32 index, s16* animPos) {
         animPos = (s16*) (((intptr_t)animPos & 0xFFFFFF) + (intptr_t)animator->animationBuffer);
     }
 #endif
+#ifdef PORT
+    animPos = port_lava_piranha_translate(animPos);
+#endif
     animator->animReadPos = animPos;
     animator->savedReadPos = animPos;
     animator->treeIndexPos = 0;
@@ -1126,6 +1142,9 @@ void play_model_animation_starting_from(s32 index, s16* animPos, s32 framesToSki
     if (animator->animationBuffer != nullptr) {
         animPos = (s16*) (((intptr_t)animPos & 0xFFFFFF) + (intptr_t)animator->animationBuffer);
     }
+#endif
+#ifdef PORT
+    animPos = port_lava_piranha_translate(animPos);
 #endif
 
     animator->animReadPos = animPos;

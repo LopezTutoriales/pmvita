@@ -1948,6 +1948,22 @@ void msg_draw_speech_bubble(
 
     negHeight = -height;
 
+#ifdef PORT
+    // land the outline's bottom row on height - 4, where the arrow attaches
+    if (height > 4) {
+        s32 texT = (((printer->maxLinesPerPage == 3 ? 1920 : 1904) * height) / (height - 4)) + 5;
+        if (texT > 0x800) {
+            texT = 0x800;
+        }
+        gMsgSpeechBoxLQuad[2].v.tc[1] = texT;
+        gMsgSpeechBoxLQuad[3].v.tc[1] = texT;
+        gMsgSpeechBoxMQuad[2].v.tc[1] = texT;
+        gMsgSpeechBoxMQuad[3].v.tc[1] = texT;
+        gMsgSpeechBoxRQuad[2].v.tc[1] = texT;
+        gMsgSpeechBoxRQuad[3].v.tc[1] = texT;
+    }
+#endif
+
     gMsgSpeechBoxLQuad[0].v.ob[0] = 1;
     gMsgSpeechBoxLQuad[2].v.ob[0] = 1;
     gMsgSpeechBoxLQuad[1].v.ob[0] = curveWidth;
@@ -2375,6 +2391,10 @@ void msg_draw_frame(s32 posX, s32 posY, s32 sizeX, s32 sizeY, s32 style, s32 pal
     }
 
     gDPPipeSync(gMainGfxPos++);
+#ifdef PORT
+    // the inspect background left filtering on, which bled the frame pieces into lines
+    gDPSetTextureFilter(gMainGfxPos++, G_TF_POINT);
+#endif
     gDPSetRenderMode(gMainGfxPos++, G_RM_XLU_SURF, G_RM_XLU_SURF2);
     gDPSetCombineMode(gMainGfxPos++, PM_CC_02, PM_CC_02);
     gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 0, frameAlpha);

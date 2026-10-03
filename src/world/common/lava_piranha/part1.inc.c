@@ -6,7 +6,13 @@ enum {
     NUM_VINES   = 4
 };
 
-#ifdef SHIFT
+#ifdef PORT
+#include "lava_piranha_vines.h"
+#define VINE_0_BASE (intptr_t) PortLavaPiranhaVineBase[0]
+#define VINE_1_BASE (intptr_t) PortLavaPiranhaVineBase[1]
+#define VINE_2_BASE (intptr_t) PortLavaPiranhaVineBase[2]
+#define VINE_3_BASE (intptr_t) PortLavaPiranhaVineBase[3]
+#elif defined(SHIFT)
 extern Addr D_80200000;
 extern Addr D_80204000;
 extern Addr D_80207000;

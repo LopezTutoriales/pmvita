@@ -319,7 +319,12 @@ API_CALLABLE(LoadBattleDmaData) {
         return ApiStatus_DONE2;
     }
 
-#ifndef PORT
+#ifdef PORT
+    {
+        extern void port_lava_piranha_set_script_for_dest(void* dest, s32 index);
+        port_lava_piranha_set_script_for_dest(gBattleDmaDest, dmaIndex);
+    }
+#else
     if (gBattleDmaDest == nullptr) {
         dma_copy(dmaEntry->start, dmaEntry->end, dmaEntry->dest);
     } else {

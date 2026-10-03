@@ -167,7 +167,11 @@ s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32
             }
 
             gSPTextureRectangle(gMainGfxPos++, drawRect.ulx * 4, drawRect.uly * 4, drawRect.lrx * 4, drawRect.lry * 4,
+#ifdef PORT
+                                0, MAX(texOffsetX, texRect.ulx) * 32, MAX(texOffsetY, texRect.uly) * 32, 1024, 1024);
+#else
                                 0, texOffsetX * 32, texOffsetY * 32, 1024, 1024);
+#endif
 
             if (stopDrawingLine) {
                 break;
@@ -296,7 +300,11 @@ s32 draw_tiled_image(IMG_PTR raster, u32 width, u32 height, u8 fmt, u8 bitDepth,
             }
 
             gSPTextureRectangle(gMainGfxPos++, drawRect.ulx * 4, drawRect.uly * 4, (drawRect.lrx - stopDrawingLine) * 4, drawRect.lry * 4,
+#ifdef PORT
+                                0, MAX(texOffsetX, texRect.ulx * 32), MAX(texOffsetY, texRect.uly * 32), dsdx, dtdy);
+#else
                                 0, texOffsetX, texOffsetY, dsdx, dtdy);
+#endif
 
             if (stopDrawingLine) {
                 break;
@@ -489,7 +497,11 @@ s32 draw_adjustable_tiled_image(IMG_PTR raster, u32 width, u32 height, u8 fmt, u
                                   G_TX_WRAP, G_TX_WRAP, masks, maskt, G_TX_NOLOD, G_TX_NOLOD);
         }
         gSPTextureRectangle(gMainGfxPos++, drawRect.ulx * 4, drawRect.uly * 4, drawRect.lrx * 4, drawRect.lry * 4,
+#ifdef PORT
+                            0, MAX(texOffsetX, texRect.ulx * 32), MAX(texOffsetY, texRect.uly * 32), dsdx, dtdy);
+#else
                             0, texOffsetX, texOffsetY, dsdx, dtdy);
+#endif
 
         if (stopDrawing) {
             break;

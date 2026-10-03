@@ -48,7 +48,11 @@ void N(unkVtxFunc001)(Vtx* firstVertex, Vtx* copiedVertices, s32 numVertices, s3
     s32 wagPhase;
     s32 bendPow, bendFrac;
     s32 i, j;
+#ifdef PORT
+    f32* vtxPos; // GBI_FLOATS: ob is float[3]
+#else
     s16* vtxPos;
+#endif
     f32 newX, newY;
     f32 angle;
     s32 offset;

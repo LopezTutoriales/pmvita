@@ -223,6 +223,10 @@ static const char* shader_item_to_str(uint32_t item, bool with_alpha, bool only_
             case SHADER_COMBINED:
                 return with_alpha ? "texel" : "texel.rgb";
             case SHADER_NOISE:
+                // PORT: the C slot has no noise input, so NOISE there means COMBINED_ALPHA
+                if (hint_single_element) {
+                    return inputs_have_alpha ? "texel.a" : "1.0";
+                }
                 return with_alpha ? "vec4(" RAND_NOISE ", " RAND_NOISE ", " RAND_NOISE ", " RAND_NOISE ")"
                                   : "vec3(" RAND_NOISE ", " RAND_NOISE ", " RAND_NOISE ")";
         }

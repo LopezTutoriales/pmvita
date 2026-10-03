@@ -49,8 +49,14 @@ BSS u8 Vine2Base[0x3000];
 BSS u8 Vine1Base[0x3000];
 BSS u8 Vine0Base[0x4000];
 
+#ifdef PORT
+#include "lava_piranha_vines.h"
+#define VINE_1_BASE (intptr_t) PortLavaPiranhaVineBase[1]
+#define VINE_2_BASE (intptr_t) PortLavaPiranhaVineBase[2]
+#else
 #define VINE_1_BASE (intptr_t) Vine1Base
 #define VINE_2_BASE (intptr_t) Vine2Base
+#endif
 
 #define EVT_LOAD_BUD_ANIM(whichVine, anim) \
     IfEq(whichVine, VINE_1) \

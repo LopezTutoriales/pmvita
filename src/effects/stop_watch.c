@@ -200,10 +200,11 @@ void stop_watch_appendGfx(void* effect) {
     gSPMatrix(gMainGfxPos++, camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     gSPDisplayList(gMainGfxPos++, D_09001000_3CC890);
     gDPSetEnvColor(gMainGfxPos++, 0, 0, 0, data->unk_2C);
-    gSPBranchList(gMainGfxPos, &gMainGfxPos[65]);
+    // PORT: size the inline vertex space from sizeof(Vtx), 24 bytes under GBI_FLOATS
+    gSPBranchList(gMainGfxPos, &gMainGfxPos[1 + 32 * sizeof(Vtx) / sizeof(Gfx)]);
 
     vtxBuffer = (Vtx_t*) (gMainGfxPos + 1);
-    gMainGfxPos = &gMainGfxPos[65];
+    gMainGfxPos = &gMainGfxPos[1 + 32 * sizeof(Vtx) / sizeof(Gfx)];
 
     for (i = 0; i < 16; i++) {
         Vtx_t* vtx = &vtxBuffer[i * 2];

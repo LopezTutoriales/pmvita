@@ -108,7 +108,20 @@ typedef struct {
     u32 size;
 } PortAssetFill;
 
+extern u8 port_kmr_22_vine_img[];
+extern u16 port_kmr_22_vine_pal[];
+extern u8 port_kzn_19_vine_img[];
+extern u16 port_kzn_19_vine_pal[];
+extern u8 port_kzn2_vine_img[];
+extern u16 port_kzn2_vine_pal[];
+
 static const PortAssetFill sAssetFills[] = {
+    { port_kmr_22_vine_img, 0x900F70, 1024 }, /* ci4 64x32 */
+    { (u8*)port_kmr_22_vine_pal, 0x901370, 32 }, /* palette */
+    { port_kzn_19_vine_img, 0xC91088, 1024 }, /* ci4 64x32 */
+    { (u8*)port_kzn_19_vine_pal, 0xC91488, 32 }, /* palette */
+    { port_kzn2_vine_img, 0x5A3020, 1024 }, /* ci4 64x32 */
+    { (u8*)port_kzn2_vine_pal, 0x5A3420, 32 }, /* palette */
     { ResetTilesImg, 0x4F210, 512 }, /* i4 */
     { battle_action_cmd_three_chances_0_pal, 0x42BB30, 32 }, /* palette */
     { battle_action_cmd_three_chances_0_png, 0x42BA10, 288 }, /* ci4 */

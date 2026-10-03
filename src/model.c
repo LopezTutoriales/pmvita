@@ -2300,6 +2300,21 @@ void load_texture_by_name(ModelNodeProperty* propertyName, s32 romOffset, s32 si
     romOffset += sizeof(*header);
 
     if (textureHandle->gfx == nullptr) {
+#ifdef PORT
+        // Lavalava water/grass/lava colors: what each two-texture surface asks for
+        if ((gGameStatusPtr->areaID == AREA_JAN || gGameStatusPtr->areaID == AREA_KZN) && header->extraTiles != 0) {
+            static s32 sLogged = 0;
+            if (sLogged < 120) {
+                sLogged++;
+                fprintf(stderr, "[maptex] %.32s main %dx%d fmt=%d siz=%d wrap=%d,%d pal=%d | extra=%d aux %dx%d fmt=%d siz=%d "
+                                "wrap=%d,%d pal=%d comb=%d/%d filt=%d\n",
+                        (char*)header->name, header->mainW, header->mainH, header->mainFmt, header->mainBitDepth,
+                        header->mainWrapW, header->mainWrapH, paletteSize, header->extraTiles, header->auxW, header->auxH,
+                        header->auxFmt, header->auxBitDepth, header->auxWrapW, header->auxWrapH, auxPaletteSize,
+                        header->auxCombineType, header->auxCombineSubType, header->filtering);
+            }
+        }
+#endif
         load_texture_impl(romOffset, textureHandle, header, rasterSize, paletteSize, auxRasterSize, auxPaletteSize);
         load_texture_variants(romOffset + rasterSize + paletteSize + auxRasterSize + auxPaletteSize, (*gCurrentModelTreeNodeInfo)[TreeIterPos].textureID, startOffset, size);
     }
@@ -2873,6 +2888,40 @@ void render_models(void) {
     f32 m30, m31, m32, m33;
     f32 centerX, centerY, centerZ;
     f32 bbx, bby, bbz;
+
+#ifdef PORT
+    // whole-world tint state, logged on change (brown/purple world reports)
+    {
+        extern void mdl_get_depth_tint_params(u8*, u8*, u8*, u8*, u8*, u8*, u8*, s32*, s32*);
+        extern void get_world_fog_distance(s32*, s32*);
+        static u32 sLastKey = 0xFFFFFFFF;
+        static s32 sLogged = 0;
+        u8 sr, sg, sb, sa, dr, dg, db, da, dfr, dfg, dfb, rr, rg, rb, er, eg, eb;
+        s32 dfs, dfe, fr, fg, fb, fa, fs, fe;
+        u32 key;
+
+        mdl_get_shroud_tint_params(&sr, &sg, &sb, &sa);
+        mdl_get_depth_tint_params(&dr, &dg, &db, &da, &dfr, &dfg, &dfb, &dfs, &dfe);
+        mdl_get_remap_tint_params(&rr, &rg, &rb, &er, &eg, &eb);
+        get_world_fog_color(&fr, &fg, &fb, &fa);
+        get_world_fog_distance(&fs, &fe);
+        key = *gBackgroundTintModePtr * 0x9E3779B1u;
+        key ^= (sr << 24 | sg << 16 | sb << 8 | sa) * 3u;
+        key ^= (dr << 24 | dg << 16 | db << 8 | da) * 5u ^ (dfr << 16 | dfg << 8 | dfb) * 7u ^ (u32)(dfs * 11 + dfe * 13);
+        key ^= (rr << 16 | rg << 8 | rb) * 17u ^ (er << 16 | eg << 8 | eb) * 19u;
+        key ^= (u32)(is_world_fog_enabled() * 23 + fr * 29 + fg * 31 + fb * 37 + fs * 41 + fe * 43);
+        key ^= (u32)gGameStatusPtr->backgroundDarkness * 47u;
+        if (key != sLastKey && sLogged < 60) {
+            sLastKey = key;
+            sLogged++;
+            fprintf(stderr, "[worldtint] area=%d map=%d mode=%d shroud=(%d,%d,%d,%d) depth prim=(%d,%d,%d,%d) "
+                            "fog=(%d,%d,%d) %d..%d remap max=(%d,%d,%d) min=(%d,%d,%d) worldfog=%d (%d,%d,%d,%d) %d..%d dark=%d\n",
+                    gGameStatusPtr->areaID, gGameStatusPtr->mapID, *gBackgroundTintModePtr, sr, sg, sb, sa, dr, dg, db,
+                    da, dfr, dfg, dfb, dfs, dfe, rr, rg, rb, er, eg, eb, is_world_fog_enabled(), fr, fg, fb, fa, fs,
+                    fe, gGameStatusPtr->backgroundDarkness);
+        }
+    }
+#endif
 
     Camera* camera = &gCameras[gCurrentCameraID];
     Model* model;

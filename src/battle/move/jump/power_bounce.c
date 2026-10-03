@@ -36,6 +36,10 @@ BSS s32 N(HitCounter);
 
 API_CALLABLE(N(InitializeHitCounter)) {
     N(HitCounter) = 0;
+#ifdef PORT
+    // the N64 reloaded this overlay's data each use
+    N(BaseHitChance) = 200;
+#endif
     return ApiStatus_DONE2;
 }
 

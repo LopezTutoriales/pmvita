@@ -291,7 +291,13 @@ enum {
     VINE_RENDER_STATE_OK        = 1,
 };
 
-#ifdef SHIFT
+#ifdef PORT
+#include "lava_piranha_vines.h"
+#define VINE_0_BASE (intptr_t) PortLavaPiranhaVineBase[0]
+#define VINE_1_BASE (intptr_t) PortLavaPiranhaVineBase[1]
+#define VINE_2_BASE (intptr_t) PortLavaPiranhaVineBase[2]
+#define VINE_3_BASE (intptr_t) PortLavaPiranhaVineBase[3]
+#elif defined(SHIFT)
 extern Addr Vine3Base;
 extern Addr Vine2Base;
 extern Addr Vine1Base;
@@ -467,9 +473,10 @@ void N(appendGfx_vines)(void* data) {
         // for each point in numPoints
 
         vtxBuffer = (Vtx_t*)(gMainGfxPos + 1);
-        gSPBranchList(gMainGfxPos, &gMainGfxPos[1 + 2 * (2 * numPoints)]);
+        // PORT: size the inline vertex space from sizeof(Vtx), 24 bytes under GBI_FLOATS
+        gSPBranchList(gMainGfxPos, &gMainGfxPos[1 + (2 * numPoints) * sizeof(Vtx) / sizeof(Gfx)]);
         vtx = (Vtx_t*) (++gMainGfxPos);
-        gMainGfxPos = &gMainGfxPos[2 * (2 * numPoints)];
+        gMainGfxPos = &gMainGfxPos[(2 * numPoints) * sizeof(Vtx) / sizeof(Gfx)];
 
         for (j = 0; j < numPoints; j++) {
             posX = vine->points[j].x;

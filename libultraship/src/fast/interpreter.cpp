@@ -50,6 +50,13 @@ std::stack<std::string> currentDir;
 #define SUPPORT_CHECK(x) do { if (!(x)) { SPDLOG_ERROR("SUPPORT_CHECK failed: " #x " at {}:{}", __FILE__, __LINE__); return; } } while (0)
 
 // SCALE_M_N: upscale/downscale M-bit integer to N-bit
+// PORT: pseudo mux ids for slot-dependent combiner inputs
+#define PORT_CCMUX_SCALE 16
+#define PORT_CCMUX_K4 17
+#define PORT_CCMUX_K5 18
+static Fast::RGBA sPortKeyScale;
+static uint8_t sPortConvertK4, sPortConvertK5;
+
 #define SCALE_5_8(VAL_) (((VAL_)*0xFF) / 0x1F)
 #define SCALE_8_5(VAL_) ((((VAL_) + 4) * 0x1F) / 0xFF)
 #define SCALE_4_8(VAL_) ((VAL_)*0x11)
@@ -324,7 +331,14 @@ void Interpreter::GenerateCC(ColorCombiner* comb, const ColorCombinerKey& key) {
                         val = SHADER_0;
                         break;
                     case G_CCMUX_1: // = G_CCMUX_CENTER = G_CCMUX_SCALE = 6
-                        if (j == 1) {
+                        if (j == 2) {
+                            // PORT: C slot 6 is the chroma key scale
+                            if (inputNumber[PORT_CCMUX_SCALE] == 0) {
+                                shaderInputMapping[0][nextInputNumber - 1] = PORT_CCMUX_SCALE;
+                                inputNumber[PORT_CCMUX_SCALE] = nextInputNumber++;
+                            }
+                            val = inputNumber[PORT_CCMUX_SCALE];
+                        } else if (j == 1) {
                             // B slot: value 6 = CENTER (chroma key center color)
                             if (inputNumber[G_CCMUX_CENTER] == 0) {
                                 shaderInputMapping[0][nextInputNumber - 1] = G_CCMUX_CENTER;
@@ -368,13 +382,32 @@ void Interpreter::GenerateCC(ColorCombiner* comb, const ColorCombinerKey& key) {
                             usedTextures[0] = true;
                         }
                         break;
-                    case G_CCMUX_NOISE:
-                        val = SHADER_NOISE;
+                    case G_CCMUX_NOISE: // = G_CCMUX_K4 = G_CCMUX_COMBINED_ALPHA = 7
+                        if (j == 0) {
+                            val = SHADER_NOISE;
+                        } else if (j == 2) {
+                            // PORT: NOISE in the C slot is read back as COMBINED_ALPHA by the shader generator
+                            val = SHADER_NOISE;
+                        } else {
+                            if (inputNumber[PORT_CCMUX_K4] == 0) {
+                                shaderInputMapping[0][nextInputNumber - 1] = PORT_CCMUX_K4;
+                                inputNumber[PORT_CCMUX_K4] = nextInputNumber++;
+                            }
+                            val = inputNumber[PORT_CCMUX_K4];
+                        }
+                        break;
+                    case G_CCMUX_K5:
+                        if (inputNumber[PORT_CCMUX_K5] == 0) {
+                            shaderInputMapping[0][nextInputNumber - 1] = PORT_CCMUX_K5;
+                            inputNumber[PORT_CCMUX_K5] = nextInputNumber++;
+                        }
+                        val = inputNumber[PORT_CCMUX_K5];
                         break;
                     case G_CCMUX_PRIMITIVE:
                     case G_CCMUX_PRIMITIVE_ALPHA:
                     case G_CCMUX_PRIM_LOD_FRAC:
                     case G_CCMUX_SHADE:
+                    case G_CCMUX_SHADE_ALPHA: // PORT: Squirt and similar effects use vertex alpha as a color
                     case G_CCMUX_ENVIRONMENT:
                     case G_CCMUX_ENV_ALPHA:
                     case G_CCMUX_LOD_FRACTION:
@@ -2307,6 +2340,11 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
                         color = &tmp;
                         break;
                     }
+                    case G_CCMUX_SHADE_ALPHA: {
+                        tmp.r = tmp.g = tmp.b = tmp.a = v_arr[i]->color.a;
+                        color = &tmp;
+                        break;
+                    }
                     case G_CCMUX_ENV_ALPHA: {
                         tmp.r = tmp.g = tmp.b = mRdp->env_color.a;
                         color = &tmp;
@@ -2326,6 +2364,17 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
                         color = &tmp;
                         break;
                     }
+                    case PORT_CCMUX_SCALE:
+                        color = &sPortKeyScale;
+                        break;
+                    case PORT_CCMUX_K4:
+                        tmp.r = tmp.g = tmp.b = tmp.a = sPortConvertK4;
+                        color = &tmp;
+                        break;
+                    case PORT_CCMUX_K5:
+                        tmp.r = tmp.g = tmp.b = tmp.a = sPortConvertK5;
+                        color = &tmp;
+                        break;
                     case 6: // G_CCMUX_CENTER (k=0, RGB) or G_ACMUX_PRIM_LOD_FRAC (k=1, Alpha)
                         if (k == 0) {
                             color = &mRdp->key_center;
@@ -2905,12 +2954,21 @@ void Interpreter::GfxDpSetBlendColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 void Interpreter::GfxDpSetKeyR(uint32_t w1) {
     // w1: wR:16-27 | cR:8-15 | sR:0-7
     mRdp->key_center.r = (w1 >> 8) & 0xFF;
+    sPortKeyScale.r = w1 & 0xFF;
+}
+
+static void port_set_convert(uint32_t w1) {
+    // w1: k2lo:27-31 | k3:18-26 | k4:9-17 | k5:0-8
+    sPortConvertK4 = (w1 >> 9) & 0xFF;
+    sPortConvertK5 = w1 & 0xFF;
 }
 
 void Interpreter::GfxDpSetKeyGB(uint32_t w1) {
     // w1: cG:24-31 | sG:16-23 | cB:8-15 | sB:0-7
     mRdp->key_center.g = (w1 >> 24) & 0xFF;
     mRdp->key_center.b = (w1 >> 8) & 0xFF;
+    sPortKeyScale.g = (w1 >> 16) & 0xFF;
+    sPortKeyScale.b = w1 & 0xFF;
 }
 
 void Interpreter::GfxDpSetFillColor(uint32_t packed_color) {
@@ -4563,6 +4621,15 @@ bool gfx_set_key_r_handler_rdp(F3DGfx** cmd0) {
     return false;
 }
 
+bool gfx_set_convert_handler_rdp(F3DGfx** cmd0) {
+    Interpreter* gfx = mInstanceRaw;
+    if (!gfx) return false;
+    F3DGfx* cmd = *cmd0;
+
+    port_set_convert((uint32_t)cmd->words.w1);
+    return false;
+}
+
 bool gfx_set_key_gb_handler_rdp(F3DGfx** cmd0) {
     Interpreter* gfx = mInstanceRaw;
     if (!gfx) return false;
@@ -4824,7 +4891,7 @@ static constexpr UcodeHandler rdpHandlers = {
     { RDP_G_RDPFULLSYNC, { "mRdpFULLSYNC", gfx_stubbed_command_handler } },          // mRdpFULLSYNC (-23)
     { RDP_G_SETKEYGB, { "G_SETKEYGB", gfx_set_key_gb_handler_rdp } },              // G_SETKEYGB (-22) chroma key center
     { RDP_G_SETKEYR, { "G_SETKEYR", gfx_set_key_r_handler_rdp } },                // G_SETKEYR (-21) chroma key center
-    { RDP_G_SETCONVERT, { "G_SETCONVERT", gfx_stubbed_command_handler } },          // G_SETCONVERT (-20) color convert
+    { RDP_G_SETCONVERT, { "G_SETCONVERT", gfx_set_convert_handler_rdp } },          // G_SETCONVERT (-20) color convert
     { RDP_G_SETSCISSOR, { "G_SETSCISSOR", gfx_SetScissor_handler_rdp } },            // G_SETSCISSOR (-19)
     { RDP_G_SETPRIMDEPTH, { "G_SETPRIMDEPTH", gfx_set_prim_depth_handler_rdp } },    // G_SETPRIMDEPTH (-18)
     { RDP_G_RDPSETOTHERMODE, { "mRdpSETOTHERMODE", gfx_rdp_set_other_mode_rdp } },   // mRdpSETOTHERMODE (-17)
