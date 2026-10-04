@@ -80,6 +80,24 @@ Still to do:
 - The castle in the intro has texture banding.
 - Pause cleanup can still free a stale HUD element id, logged as `[hudfree]`.
 
+## Language mods (Spanish, etc.)
+
+Translation mods made for [PaperBoat](https://github.com/HarbourMasters/PaperBoat) (`.o2r` files containing `messages/MSG_*`) work here too, for text only.
+
+1. Extract the `.o2r` from the downloaded archive (the game only picks up `.o2r`/`.otr`, not `.zip`/`.7z`/`.rar`).
+2. Copy it to `ux0:data/papership/mods/`.
+3. Start the game and check `ux0:data/papership/log.txt` for `[MSG] mod text override: N "messages/MSG_*" files found` and later `first hit`.
+
+Messages the mod does not contain fall back to the ROM. Fonts, textures and other assets from a mod are not loaded.
+
+The (section, index) -> resource name table in `port/msg_resource_names.c` is generated from PaperBoat's `include/assets/messages.h`:
+
+```
+python3 tools/gen_msg_names.py /path/to/PaperBoat/include/assets/messages.h > port/msg_resource_names.c
+```
+
+Host test of the decoder and table: `gcc -Iport tools/tests/msg_override_test.c port/msg_override_blob.c port/msg_resource_names.c -o t && ./t` (copy the three `port/` files to a scratch dir first if your system `endian.h` is shadowed by `port/endian.h`).
+
 ## Building
 
 ```

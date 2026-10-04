@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "rom_offsets.h"
 void nuPiReadRom(u32 rom_addr, void* buf_ptr, u32 size);
+int Port_MsgLoadOverride(unsigned int msgID, void* dest, unsigned int destCap);
 
 // On N64, buffer pointers are in KSEG0 (0x80000000+), negative as s32.
 // On 64-bit PC, heap pointers are positive, so msgID >= 0 can't distinguish
@@ -1491,6 +1492,11 @@ void dma_load_msg(u32 msgID, void* dest) {
 #else
 void dma_load_msg(u32 msgID, void* dest) {
 #ifdef PORT
+    // PORT: language mods (.o2r in mods/) can replace message text; the ROM is the fallback.
+    if (Port_MsgLoadOverride((unsigned int)msgID, dest, 0x400)) {
+        return;
+    }
+
     // PORT: On 64-bit PC, we can't use u8* for ROM offsets (they're 4-byte big-endian u32s).
     // Read offsets as u32, byte-swap from big-endian, and use nuPiReadRom directly.
     // PORT: Guard against invalid message sections.
